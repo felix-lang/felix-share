@@ -1,0 +1,17 @@
+#line 31 "/Users/skaller/felix/src/packages/algebra.fdoc"
+include "std/algebra/predicate";        // in logic.fdoc
+include "std/algebra/set";              // in algebra.fdoc
+include "std/algebra/container";        // in algebra.fdoc
+include "std/algebra/equiv";            // in algebra.fdoc
+include "std/algebra/partialorder";     // in algebra.fdoc
+include "std/algebra/totalorder";       // in algebra.fdoc
+include "std/algebra/sequence";         // in algebra.fdoc
+include "std/algebra/group";            // in algebra.fdoc
+include "std/algebra/ring";             // in algebra.fdoc
+include "std/algebra/bits";             // in algebra.fdoc
+include "std/algebra/integer";          // in algebra.fdoc
+include "std/algebra/trig";             // in algebra.fdoc
+include "std/algebra/real";             // in algebra.fdoc
+include "std/algebra/complex";          // in algebra.fdoc
+include "std/algebra/monad";            // in algebra.fdoc
+

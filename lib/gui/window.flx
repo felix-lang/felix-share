@@ -1,0 +1,77 @@
+#line 684 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiWindow
+{
+  interface window_t {
+    get_sdl_window : 1 -> SDL_Window;
+    get_sdl_surface: 1 -> &SDL_Surface;
+    get_sdl_window_id : 1 -> uint32;
+
+    get_surface: 1 -> surface_t;
+    add: drawable_t -> 0;
+    remove: string -> 0;
+    get_drawchain: 1 -> drawchain_t;
+    draw: 1 -> 0;
+
+    show: 1 -> 0;
+    hide: 1 -> 0;
+    raise: 1 -> 0;
+    prim_update: 1 -> 0;
+    update: 1 -> 0; // does a draw then prim_update
+    destroy: 1 -> 0;
+  }
+
+  object window (title:string, xpos:int, ypos:int, width:int,height:int, flag:uint32) implements window_t =
+  {
+    var w = SDL_CreateWindow(
+      title,
+      xpos,ypos,
+      width, height,
+      flag
+    );
+    var dc = drawchain ();
+
+    method fun get_drawchain () => dc;
+    method proc add (d:drawable_t) => dc.add d;
+    method proc remove (tag:string) => dc.remove tag;
+
+
+    method fun get_sdl_window_id () => SDL_GetWindowID w;
+    method fun get_sdl_window () => w;
+    method fun get_sdl_surface() => SDL_GetWindowSurface w;
+    method fun get_surface () : surface_t => surface (SDL_GetWindowSurface w);
+
+    method proc show () { SDL_ShowWindow w; }
+    method proc hide () { SDL_HideWindow w; }
+    method proc raise () { SDL_RaiseWindow w; }
+    method proc destroy () { SDL_DestroyWindow w; }
+
+    method proc prim_update()
+    {
+      var result = SDL_UpdateWindowSurface w;
+      if result != 0 do
+        eprintln$ "Unable to update window";
+        System::exit 1;
+      done
+    }
+
+    method proc draw ()
+    {
+      var surf =  surface (SDL_GetWindowSurface w);
+      dc.draw surf;
+    }
+
+    method proc update () { draw(); prim_update(); }
+
+  }
+
+  gen create_fixed_window (title:string, x:int, y:int, width:int, height:int) : window_t =>
+    window (title, x,y,width,height, SDL_WINDOW_SHOWN \| SDL_WINDOW_ALLOW_HIGHDPI)
+  ;
+
+  gen create_resizable_window (title:string, x:int, y:int, width:int, height:int) : window_t =>
+    window (title, x,y,width,height, SDL_WINDOW_RESIZABLE \| SDL_WINDOW_ALLOW_HIGHDPI)
+  ;
+
+
+}
+

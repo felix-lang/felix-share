@@ -1,0 +1,3988 @@
+
+\documentclass[oneside]{book}
+\usepackage{color}
+\definecolor{bg}{rgb}{0.95,0.95,0.95}
+\definecolor{emphcolor}{rgb}{0.5,0.0,0.0}
+\newcommand{\empha}{\bf\color{emphcolor}}
+\usepackage{parskip}
+\usepackage{minted}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usemintedstyle{friendly}
+\setminted{bgcolor=bg,xleftmargin=20pt}
+\usepackage{hyperref}
+\hypersetup{pdftex,colorlinks=true,allcolors=blue}
+\usepackage{hypcap}
+\title{Modern Programming}
+\author{John Skaller}
+\begin{document}
+\maketitle
+\tableofcontents
+\chapter{Introduction}
+This book is intended to delve into modern programming techniques.
+Programming has changed. Nicolas Wirth, introducing Pascal language,
+coined the equation "Algorithms + Datastructures = Programs".
+
+Whilst research into algorithms continues, many important
+algorithms such as sorting and searching are well understood.
+Modern research focuses instead on messaging protocols
+and type systems.
+
+Today, the core issues in programming do not involve design
+of algorithms or data structures, since many libraries with
+heavily tested functions, and subject to competitive performance
+trials, are available off the shelf.
+
+Rather, the central issues today revolve around {\em interfacing},
+which means making software components work together. And it is
+not just software which requires interfacing, but the software
+developers themselves.
+
+From a theoretical perspective, the core problem is restated:
+the central issue is {\em composability}. Modern type system
+research is heavily oriented towards studying how we can
+make components which can be easily plugged together.
+Themes include higher order polymorphism, polyadic programming,
+managing side effects in non-functional code.
+
+In all programming, {\em correctness} is a vital issue.
+However from the perspective of a rapidly changing
+environment, business structure, and client requirements,
+confidence in code quality must be balanced against
+rapid development as a method for ensuring the supplier
+survives financially in the marketplace at all.
+
+Perhaps for this reason most modern programming languages
+are dynamically typed and simplistic in nature, allowing
+rapid coding, and easy learning of the tools. Whilst most
+academic languages are toys primarily intended to provide
+a proof of practicality for theoretical models, there are
+a few systems which are production quality languages with
+strong support bases.
+
+So in this book, I feel there are no real options other than to
+use a new programming language as the display vehicle.
+
+\part{Felix Overview}
+\chapter{Quick Start}
+We must of course begin with the traditional greeting!
+
+\begin{minted}{felix}
+println$ "Hello World";
+\end{minted}
+
+Here \verb%println% is a procedure which outputs a value to
+standard output. The argument is of course a literal of
+type \verb%string%. Calls to procedures must be terminated
+by a semicolon \verb%;%. You will note, we do not require
+parentheses around the argument to denote a procedure call!
+We do not like parentheses much! The \verb%$% sign will be
+explained in more detail later, but for now you should
+know it is just a low precedence, right associative application
+or call operator.
+
+You can run this program from your console or terminal, once
+Felix is installed, by just typing:
+
+\begin{verbatim}
+flx hello.flx
+\end{verbatim}
+
+assuming the file \verb%hello.flx% contains the sample code
+and is in the current directory. Behind the scenes Felix does
+dependency checking, transates the program to C++, compiles
+the C++ to a machine binary, and runs it.
+
+It works like Python but it performs like C++.
+
+For more information see \url{http://felix-lang.org}.
+
+\section{Integers: {\tt int}}
+Felix has the usual integer type \verb%int% and literals consisting
+of decimal digits, and the usual {\empha binary operators} \verb%+% for addition,
+\verb%-% for subtraction, \verb%*% for multiplication, \verb%/% for division,
+and \verb+%+ for remainder. We also have \verb%<<% to multiply by a power of 2,
+and \verb%>>% to divide by a power of 2.These have the same semantics as in C, because,
+these operators are in fact implemented in the Felix standard library by
+delegating to C.
+
+\begin{minted}{felix}
+println$ 42;
+println$ (42 + 12) * 90 - (36 / 2 + 1) * 127 % 3;
+\end{minted}
+
+Note you must put spaces around the \verb%-% operator! This is because
+in Felix \verb%-% is also a hyphen, allowed in identifier names.
+
+We also have the {\empha unary operator} \verb%-% for negation, and for symmetry
+we also have unary \verb%+% which does nothing.
+
+These operators are just functions so here are some more: 
+the function \verb%str% converts an \verb%int% to a readable
+string, the function \verb%abs% finds the absolute value of an
+integer and \verb%sgn% returns $-1$ if its argument is negative,
+$0$ if it is zero, and $1$ if it is positive.
+
+We also have the usual {\empha comparisons} on integers represented as
+infix operators: \verb%==% for equality, \verb%!=% for inequality, 
+\verb%<% for less than, \verb%>% for greater than, and
+\verb%<=% and \verb%>=% for less than or equal and greater than
+or equal, respectively.
+
+\section{Other integer types}
+Felix has a lot of other integer types corresponding to those found
+in C. Each of these types is distinct, none are aliases! See Table \ref{Felix Integer Types}.
+
+\begin{table}
+\caption{Integer Functions}
+\label{Integer Functions}
+\centering
+\begin{tabular}[c]{lll}
+\hline
+name&kind&semantics\\
+\hline
+\multicolumn{3}{c}{All Integers}\\
+\hline
+\verb%==%&\verb%T * T -> bool%&equality\\
+\verb%!=%&\verb%T * T -> bool%&inequality\\
+\verb%<%&\verb%T * T -> bool%&less\\
+\verb%<=%&\verb%T * T -> bool%&less or equal\\
+\verb%>%&\verb%T * T -> bool%&greater\\
+\verb%>=%&\verb%T * T -> bool%&greater or equal\\
+\verb%+%&\verb%T * T -> T%&addition\\
+\verb%-%&\verb%T * T -> T%&subtraction\\
+\verb%*%&\verb%T * T -> T%&multiplication\\
+\verb%/%&\verb%T * T -> T%&quotient\\
+\verb+%+&\verb%T * T -> T%&remainder\\
+\verb%<<%&\verb%T * T -> T%&multiplication by power of 2\\
+\verb%>>%&\verb%T * T -> T%&division by power of 2\\
+\verb%-%&\verb%T -> T%&negation\\
+\verb%+%&\verb%T -> T%&no op\\
+\multicolumn{3}{c}{Signed Integers}\\
+\hline
+\verb%sgn%&\verb%T -> T%&sign\\
+\verb%abs%&\verb%T -> T%&absolute value\\
+\multicolumn{3}{c}{Unsigned Integers}\\
+\hline
+\verb%\&%&\verb%T * T -> T%&bitwise and\\
+\verb%\|%&\verb%T * T -> T%&bitwise or\\
+\verb%\^%&\verb%T * T -> T%&bitwise exclusive or\\
+\verb%~%&\verb%T * T -> T%&bitwise complement\\
+\end{tabular}
+\end{table}
+
+\begin{table}
+\caption{Felix Integer Types}
+\label{Felix Integer Types}
+\centering
+\begin{tabular}[c]{lll}
+\hline
+Felix&C&Suffix\\
+\hline
+\multicolumn{3}{c}{Standard signed integers}\\
+\hline
+\verb%tiny% &\verb%char% & 42t \\
+\verb%short% &\verb%short% & 42s \\
+\verb%int% &\verb%int% & 42 \\
+\verb%long% &\verb%long% & 42l \\
+\verb%vlong% &\verb%long long% & 42ll \\
+\multicolumn{3}{c}{Standard unsigned integers}\\
+\hline
+\verb%utiny% &\verb%unsigned char% & 42ut \\
+\verb%ushort% &\verb%unsigned short% & 42us \\
+\verb%uint% &\verb%unsigned int% & 42u \\
+\verb%ulong% &\verb%unsigned long% & 42ul \\
+\verb%uvlong% &\verb%unsigned long long% & 42ull \\
+\multicolumn{3}{c}{Exact signed integers}\\
+\hline
+\verb%int8% &\verb%int8_t% & 42i8 \\
+\verb%int16% &\verb%int16_t% & 42i16 \\
+\verb%int32% &\verb%int32_t% & 42i32 \\
+\verb%int64% &\verb%int64_t% & 42i64 \\
+\multicolumn{3}{c}{Exact unsigned integers}\\
+\hline
+\verb%uint8% &\verb%uint8_t% & 42u8 \\
+\verb%uint16% &\verb%uint16_t% & 42u16 \\
+\verb%uint32% &\verb%uint32_t% & 42u32 \\
+\verb%uint64% &\verb%uint64_t% & 42u64 \\
+\multicolumn{3}{c}{Weird ones}\\
+\hline
+\verb%size% &\verb%size_t% & 42uz \\
+\verb%intptr% &\verb%uintptr_t% & 42p \\
+\verb%uintptr% &\verb%uintptr_t% & 42up \\
+\verb%ptrdiff% &\verb%ptrdiff_t% & 42d \\
+\verb%uptrdiff% &\verb%ptrdiff_t% & 42ud \\
+\verb%intmax% &\verb%intmax_t% & 42j\\
+\verb%uintmax% &\verb%uintmax_t% & 42uj \\
+\multicolumn{3}{c}{Addressing}\\
+\hline
+\verb%address% &\verb%void*% &\\
+\verb%byte% &\verb%unsigned char% &\\
+\end{tabular}
+\end{table}
+
+\subsubsection{Lexicology}
+Integers may be specified with a radix, and an underscore
+may be used between digits as a separator:
+
+\begin{minted}{felix}
+var x = 0b1111_0011; // binary
+var y = 0o777_321;   // octal
+var z = 0d998_444;   // decimal
+var a = 0xBADE_DAFE; // hex
+\end{minted}
+
+\subsection{Conversions}
+All the integer types can be inter-converted with a conversion.
+This is just the name of the target type, used as a function. 
+For example:
+
+\begin{minted}{felix}
+var x : long = long 42uz;
+var y : int64 = x.int64;
+\end{minted}
+
+The dot notation is just shortcut high precedence reverse
+application operator much beloved by OO enthusiasts.
+
+\subsection{Bitwise operations}
+For unsigned integers only, bitwise operations are supported.
+These are \verb%\&% for bitwise and, \verb%\|% for bitwise or,
+\verb%\^% for bitwise exclusive or, and \verb%~% for bitwise
+complement.
+
+\section{Booleans: {\tt bool}}
+The result of a comparison is a new type, \verb%bool%
+which has two values, \verb%false% and \verb%true%.
+You can print booleans:
+
+\begin{minted}{felix}
+println$ 1 < 2;
+\end{minted}
+
+Felix also has a special statement for asserting that a 
+boolean value is true:
+
+\begin{minted}{felix}
+assert 1 < 2;
+\end{minted}
+
+If the argument of an \verb%assert% is false, then if control
+flows through it, the program is terminated with an error message.
+Note that as far as \verb%assert% is neither procedure nor function
+you do not need to fix operator priorities with \verb%$%.
+
+Booleans support the usual {\empha logical operators}, but in Felix they
+are spelled out. Conjunction is spelled \verb%and%, whilst disjunction
+is spelled \verb%or%, implication is spelled \verb%implies%. Of course
+we also have negation \verb%not%.
+
+\subsection{Conditional Expression}
+With \verb%bool% and \verb%int% we can demonstrate the conditional
+expression:
+
+\begin{minted}{felix}
+println$ 
+  if 1 < 2 then "less" 
+  elif 1 > 2 then "greater" 
+  else "equal" 
+  endif
+;
+\end{minted}
+
+Note that bool also forms a \href{https://en.wikipedia.org/wiki/Total_order}{total order} 
+and can be compared, we
+have $\verb%false% < \verb%true%$ so that $a \verb%==% b$
+means $a$ is equivalent to $b$, we can also say that $a$ is true
+if and only if $b$ is true. It turns out inequality $a \verb%!=% b$
+is the same as exclusive or. Be careful though, since if
+$a$ is less than or equal to $b$, written $a \verb%<=% b$ this actually
+means that $a$ implies $b$ logically!
+
+\section{Special symbols}
+Felix has a very rich set of symbols. This is because,
+as well as the usual ascii-art symbols, it also supports
+almost the complete set of \TeX, \LaTeX, and AmSTeX symbols.
+
+\TeX symbols start with an backslash and are followed by 
+a sequence of letters. These symbols display in typeset format
+when using the \verb%flx_web% web server.
+
+For example the following code:
+
+\begin{minted}{felix}
+var \alpha = 1;
+fun \Gamma (x:int)=> x * x;
+println$ \Gamma\alpha;
+\end{minted}
+
+should be typeset as
+
+\begin{minted}[escapeinside=||]{felix}
+var |$\alpha$| = 1;
+fun |$\Gamma$| (x:int)=> x * x;
+println$ |$\Gamma\alpha$|;
+\end{minted}
+
+
+
+\section{Variables: {\tt var}}
+Felix is a procedural programming language, so it has variables!
+A variable denotes an addressable, mutable, storage location
+which in Felix, like C, is called an {\em object}.
+
+\begin{minted}{felix}
+var x = 1;
+var y = 2;
+var z = x + 2 * y;
+println$ z;
+z = 2 * x + y;
+println$ z;
+\end{minted}
+
+This code shows variables can be used to factor expressions into
+a sequence of assignments. We assign variable $x$ the value 1,
+variable $y$ the value 2, add $x$ to twice $y$ and put the
+result in variable $z$, then print it.
+
+Then we assign perform a different calculation and assign
+that value to $z$ and print it.
+
+What appears to be a variable initialisation is actually
+equivalent to a definition of an uninitialised variable
+followed by an assignment.
+
+\begin{minted}{felix}
+var x: int;
+x = 1;
+\end{minted}
+
+The first statment reserves uninitialised store of type \verb%int%
+named $x$ and the second assigns a value to it. Be very careful
+with variables, initialised or not!  Felix has setwise scoping
+rules, which are similar to C's function scope used for labels.
+This means in a scope, you can refer to any symbol defined
+{\em anywhere} in that scope. We shall see this is useful
+for recursive functions because it eliminates the need for
+forward declarations. However the following code has undefined behaviour:
+
+\begin{minted}{felix}
+println$ x;
+var x = 1;
+\end{minted}
+
+There is no syntax error, no type error, and no lookup error in 
+this code. The programmer used an uninitialised variable:
+even though the variable is assigned a value, it is done too late.
+
+Strangely, this code has deterministic behaviour:
+
+\begin{minted}{felix}
+println$ x;
+var x = "Hello";
+\end{minted}
+
+but it may not do what you expect! It prints nothing!
+The reason is simple enough: when Felix creates a variable
+it is first initialised with its C++ default constructor.
+Since a Felix \verb%int% is literally a C++ \verb%int% the
+default constructor exists, but it is said to be trivial,
+meaning, it does nothing. This is to improve performance,
+in the case the first use of the variable will be to assign
+a value to it: there's no point putting a value in there and
+then overwriting it!
+
+On the other hand Felix \verb%string% type is just 
+C++ \verb%::std::basic_string<char>% and its default 
+initialiser sets the string to the empty string \verb%""%.
+That's what the code above prints!
+
+\section{Floating Point: {\tt double}}
+Felix also provides a model of C++ type \verb%double%
+with the usual operators.  This is a double precision floating point type 
+which usually follows IEEE standard. You can write a double precision
+literal in the usual way. Felix follows ISO C-99 for floating point
+literals.
+
+A set of useful functions is also provided, corresponding to those
+found in C-99 header file \verb%math.h%.
+
+\begin{minted}{felix}
+var x = 1.3;
+var y = 0.7;
+assert sqrt (sqr (sin x) + sqr (cos y)) - 1.0 < 1E-6;
+\end{minted}
+
+Note there is a special caveat with floating point arithmetic.
+In Felix, \verb%-% has higher precedence than \verb%+%.
+This means that:
+
+\begin{minted}{felix}
+var x: double = something;
+var y: double; something_else;
+assert x + y - y == x;
+\end{minted}
+
+because the subtraction is done first.  This can make
+a difference for integers too, if a calculation overflows,
+but most floating point operators are not associative: order matters!
+
+Similarly, division has a higher precedence than multiplication!
+
+Floating reals are totally ordered and support exact comparisons.
+However these operations are not numerically sound, they're
+based on the underlying finite representation.
+
+Floats also provide checks for \verb%nan% pseudo value, as well 
+as \verb%+inf% and \verb%-inf%.
+
+\subsection{Other floats}
+As well as \verb%double% Felix provides single precision
+\verb%float% and extended precision \verb%ldouble%
+based on \verb%float% and \verb%long double% respectively,
+with the equivalent operators.
+
+It also supports complex numbers with Cartesian representation
+based on C++ complex forms. The types are \verb%fcomplex% based
+on \verb%float%, \verb%dcomplex% based on \verb%double%,
+and \verb%lcomplex% based on \verb%ldouble%.
+
+In addition Felix provides double precision based \verb%quaternion%
+type.
+
+\section{Strings: {\tt string}}
+Felix uses C++ strings for its own strings for compatibility.
+String literals have 6 forms following Python. Strings
+not spanning multiples lines can be enclosed in either single
+or double quotes. Strings spanning multiple lines may
+be enclosed in tripled single or double quotes.
+
+\begin{minted}{felix}
+var ss1 = 'Short String';
+var ss2 = "Short String";
+var ls3 = """
+A poem may contain
+many lines of prose
+""";
+var ls4 = '''
+Especially if it is written
+by T.S. Elliot
+''';
+\end{minted}
+
+Note that the triple quoted strings contain everything between the
+triple quotes, including leading and trailing newlines if present.
+
+Strings can be concatenated by writing them one after the other
+separated by whitespace.
+
+\begin{minted}{felix}
+var rose = "Rose";
+var ss5 = 
+  "A " rose ", "
+  "by another "
+  "name."
+;
+\end{minted}
+
+Note that concatenation works for string expressions in general,
+not just literals.
+
+\subsection{Escape Codes}
+Special escapes may be included in strings. The simple
+escapes are for newline, \verb%\n%, tab \verb%\t%,
+form feed \verb%\f%, vertical tab \verb%\v%, 
+the escape character \verb%\e%, \verb%\a% alert
+or bell, \verb%\b% backspace, \verb%\'% single quote,
+\verb%\"% double quote, \verb%\r% carriage return,
+\verb%\\% backslash (slosh).
+
+These can be used in any simple string form.
+Note carefully each is replaced by a single character.
+This includes \verb%\n%, even on Windows.
+
+In addition Felix provides \verb%\xXX% where each
+X is one of the hex digits $0123456789$, $ABCDEF$, or, $abcdef$.
+The hex escape is at most two characters
+after the \verb%x%, if the second character is not a
+hex digit, the escape is only one character long,
+the sequence is replaced by the char with ordinal value 
+given by the hex code.
+
+Felix also provides decimal and octal escapes using
+\verb%\dDDD% and \verb%\oOOO% respectively, with a 
+3 character limit on the decoder. Note carefully
+Felix does NOT provide C's octal escape using
+a 0 character. Octal is totally archaic. 
+
+Felix also provides two unicode escapes. These
+are \verb%\uXXXX% and \verb%\UXXXXXXXX% which 
+consist of up to 4 and up to 8 hex digits exactly. 
+The corresponding value is translated to UTF-8
+and that sequence of characters replaces the escape.
+The value must be in the range supported by UTF-8.
+
+Felix also provides raw strings, in which escapes
+are not recognised. This consists of the letter \verb%r%
+or \verb%R% followed by a single or triple quoted string
+with double quote delimiter. You cannot use the raw prefix
+with single quoted strings because the single quote following
+a letter is allowed in identifiers.
+
+
+\begin{table}
+\caption{String Escapes}
+\label{String Escapes}
+\centering
+\begin{tabular}[c]{lll}
+\multicolumn{3}{c}{Basic}\\
+Escape&Name&Decimal Code\\
+\hline
+\verb%\a%&ASCII bell& 7\\
+\verb%\b%&ASCII backspace&8\\
+\verb%\f%&ASCII Form Feed&12\\
+\verb%\n%&ASCII New Line&10\\
+\verb%\t%&ASCII Tab&9\\
+\verb%\r%&ASCII Carriage Return&13\\
+\verb%\v%&ASCII Vertical Tab&11\\
+\verb%\'%&ASCII Single Quote&39\\
+\verb%\"%&ASCII Double Quote&34\\
+\verb%\\%&ASCII Backslash&92\\
+\multicolumn{3}{c}{Numeric}\\
+\hline
+\verb%\d%999&Decimal encoding&\\
+\verb%\o%777&Octal encoding&\\
+\verb%\x%FF&Hex encoding&\\
+\verb%\u%FFFF&UTF-8 encoding&\\
+\verb%\U%FFFFFFFF&UTF-8 encoding&\\
+\end{tabular}
+\end{table}
+
+
+
+\subsection{String Functions}
+Felix has a rich set of string functions. The most important
+is \verb%char%, which returns a value of type \verb%char%.
+If the string argument has zero length, the character with
+ordinal value 0 is returned, otherwise the first character
+of the string is returned. Again, following Python, Felix does 
+not provide any character literals!
+
+\subsubsection{Comparisons}
+We provide the usual comparison operators.
+
+\subsubsection{Length}
+Felix also provides the most important function \verb%len%
+which returns the length of a string. The return type is
+actually \verb%size% which is a special unsigned integer type
+corresponding to ISO C's \verb%size_t%.
+
+\subsubsection{Substring}
+Felix can fetch a substring of a string using Python like convenions.
+
+\begin{minted}{felix}
+var x = "Hello World";
+var copied = x.[to];   // substring
+var hello = x.[to 5];  // copyto
+var world= x.[6 to];   // copyfrom
+var ello = x.[1 to 5]; // substring
+var last3 = x.[-3 to]; // substring
+\end{minted}
+
+The first index is inclusive, the second exclusive. 
+The default first position is 0, the default last
+position is the length of the string. If the range specified
+goes off either end of the string it is clipped back to the string.
+If the indices are out of order an empty string is returned.
+
+A negative index is translated to by adding the string length.
+
+The substring function is defined so it cannot fail.
+The name of the actual library function called by this notation
+is shown in the corresponding comment.
+
+\subsubsection{Index}
+To fetch a single character use:
+
+\begin{minted}{felix}
+var x = "Hello world";
+var y : char = x.[1]; // subscript
+\end{minted}
+
+If the index is out of range, a character with ordinal 0 is returned.
+Negative indices are translated by adding the string length.
+The index function cannot fail.
+
+\subsection{Regexps and Regdefs}
+Felix provides Google's
+\href{https://code.google.com/p/re2}{Google RE2} 
+engine for regular expressions.
+The basic syntax and capabilities are a subset of Perl's PCRE,
+only RE2 actually works correctly and performs well.
+RE2 does not support backreferences.
+
+
+\subsubsection{Basic Matching}
+A regexp can be compiled with the \verb%RE2% function.
+Matching is done with the \verb%Match% function.
+\verb%Match% only supports a complete match.
+There's no searching or partial matching. Instead,
+just use repeated wildcards as shown.
+
+
+\begin{minted}{felix}
+var r = RE2(" *([A-Za-z_][A-Za-z0-9]*).*");
+var line = "Hello World";
+var maybe_subgroups = Match (r, line);
+match maybe_subgroups with
+| #None => println$ "No match";
+| Some a =>
+  println$ "Matched " + a.1;
+endmatch;
+\end{minted}
+
+\subsubsection{Streamable matching}
+You may want to match more than one instance of a pattern in a string.
+For example, you may want to capture each word in a line of text.
+This can be done by iterating over a regex like the following
+
+\begin{minted}{felix}
+var r2 = RE2("\w+"); // try to match a word
+var sentence = "Hello World";
+for x in (r2, sentence) do
+    println$ x.0;
+done
+\end{minted}
+
+\subsubsection{Regular definitions}
+Regular expressions are quoting hell. Luckily Felix provides a
+solution: regular definitions.
+
+\begin{minted}{felix}
+regdef lower = charset "abcdefghijklmnopqrstuvwxyz";
+regdef upper = charset "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+regdef digit = charset "0123456789";
+regdef alpha = upper | lower;
+regdef cid0 = alpha | "_";
+regdef cid1 = cid0 | digit;
+regdef cid = cid0 cid1 *;
+regdef space = " ";
+regdef white = space +;
+regdef integer = digit+;
+\end{minted}
+
+These are some basic definitions. Note that \verb%regdef% introduces a new
+syntax corresponding with the notation usually used for
+regular expressions.
+
+This is called a DSSL or Domain Specific Sub-Language. Its not a DSL,
+because that's a complete new language, rather the {\em sub} suggests
+its an extension of normal Felix. The extension is written entirely
+in user space.  Now to use these definitions:
+
+\begin{minted}{felix}
+// match an assignment statement
+regdef sassign =
+  white? "var" white?
+  group (cid) white? "=" white?
+  (group (cid) | group (integer))
+  white? ";" white?
+;
+
+var rstr : string = sassign.Regdef::render;
+var ra = RE2 rstr;
+var result = Match (ra, " var a = b; ");
+println$ 
+  match result with
+  | #None => "No match?"
+
+  | Some groups =>
+    "Assigned " + groups.1 +
+    if groups.2 != "" then
+        " from variable " + groups.2
+    else
+        " from integer" + groups.3
+    endif
+  endmatch
+;
+\end{minted}
+
+Note that the regdef kind of variable must be converted to a
+Perl regexp in a string form using the \verb%render% function.
+
+\chapter{Data types}
+\section{Pointers {\tt \&}}
+Since variables are mutable addressable objects we can
+take the address of a variable:
+
+\begin{minted}{felix}
+var x = 1;
+var px : &int = &x;
+var y = *px;
+px <- 42;
+println$ x,y;
+\end{minted}
+
+Here, the type of a pointer to \verb%int% is written 
+\verb%&int%, the address of a variable \verb%x% is
+written \verb%&x%, the dereference operation applied
+to the pointer \verb%px% is written \verb%*px%.
+
+The store operation \verb%px <- 42% is a core operation.
+In particular assignment is just a shorthand for storing
+at the address of a variable:
+
+\begin{minted}{felix}
+x = 42; // means
+&x <- 42;
+\end{minted}
+
+Note that in principle the \verb%&% symbol is {\em NOT}
+an operator. A variable is in fact a constant, its not
+variable at all. It's just that the constant is the address
+of a storage object. What's stored {\em at} the address,
+or {\em in} a variable may change, the variable itself
+does not.
+
+\section{Tuples}
+Felix has an strucurally typed product where components are
+accessed by position, commonly called a {\em tuple}.  Tuples
+can be constructed using the non-associative n-ary comma operator
+and accessed by using a plain decimal integer as the projection
+function:
+
+\begin{minted}{felix}
+var x = 1,"Hello", 42.7; // type int * string * double
+var i = x . 0;
+var h = x . 1;
+var d = x  . 2;
+\end{minted}
+
+Tuple is just another name for Cartesian product.
+They allow you to pack several values together into a single
+value in such a way that you can get the components you put
+in out again.
+
+We shall see tuples are vital for functions, since functions
+can only take a single argument. To work around this fact,
+we can pack multiple values together using a tuple.
+
+\subsection{Unit tuple}
+There is a special tuple with nothing in it called
+the {\em unit} tuple, written:
+
+\begin{minted}{felix}
+  var u2 : 1 = ();
+  var u : unit = ();
+\end{minted}
+
+where the alias \verb%unit% is defined in the library by:
+
+\begin{minted}{felix}
+   typedef unit = 1;
+\end{minted}
+
+The $1$ signifies that the unit type has only one value.
+It is a \href{https://en.wikipedia.org/wiki/Unit_type}{unit type}.
+
+\subsection{Arrays}
+If all the elements of a tuple are the same type,
+its called an {\em array}. In this case the accessor
+index, or projection, can be an expression of \verb%int%
+type.
+
+\begin{minted}{felix}
+var x : int ^4 = 1,2,3,4;
+for var i in 0 upto x.len.int - 1 do
+  println$ x . i;
+done
+\end{minted}
+
+You will also see the use of a low level \verb%for% loop
+here, and the use of the \verb%len% function to get the array
+length. The \verb%len% function returns a value of type \verb%size%
+but the loop variable \verb%i% is an \verb%int%, so we have to 
+convert it.
+
+\section{Unit Sums}
+The type of the array in the last section
+is given by
+
+\begin{minted}{felix}
+  int ^ 4 = int * int * int * int
+\end{minted}
+
+This is the usual meaning of the exponential operator \verb%^%:
+raising to some power $n$ means multiplication of $n$ copies.
+
+However you may be surprised to learn that in Felix, \verb%4%
+is a type, and 
+
+\begin{minted}{felix}
+  4 = 1 + 1 + 1 + 1
+\end{minted}
+
+The type \verb%1% here is also called \verb%unit% and is just the
+type of the empty tuple \verb%()%. Now, you have seen that the
+cartesian product type is denoted using the n-ary non-associative
+operator \verb%*%, so it is not so surprising that the type
+denoted by the n-ary non-associative operator \verb%+% is called
+a sum. So, the type \verb%4% is a called a {\em unitsum} because
+it is the sum of units.
+
+Values of a unit sum just represent cases. The notation is ugly:
+
+\begin{minted}{felix}
+var x : int ^4 = 1,2,3,4;
+var third = case 2 of 4;
+println$ x.third; // the *true* projection
+\end{minted}
+
+especially as it's zero origin. When you use an integer array
+index, it has to be bounds checked at run time. However if you use a unit
+sum index, the check is done by the type system at compile time.
+
+There is a very commonly used unitsum. You already know it: \verb%bool%
+is nothing more than another name for type \verb%2% and the special
+words \verb%false% and \verb%true% are just aliases for \verb%case 0 of 2%
+and \verb%case 1 of 2% respectively!
+
+\section{Records}
+A record is a tuple with named fields.
+
+\begin{minted}{felix}
+var r : (a:int, b:string) = (a=42, b="hitch-hiker);
+println$ r.a, r.b;
+\end{minted}
+
+Records support advanced features including row polymorphism
+with scoped labels.
+
+\section{Structs}
+A struct is a nominally typed product with named fields.
+
+\begin{minted}{felix}
+struct X {
+  a:int;
+  b:string;
+  fun show() => self.b + " " + self.a.str;
+};
+var x = X(42, "World");
+x.show;
+\end{minted}
+
+Functions and procedures can be included in a record but
+are actually defined outside it with a curried argument
+named \verb%self%. It has the type of the record for
+a function, and a pointer to the record for a procedure.
+So the above is equivalent to:
+
+\begin{minted}{felix}
+struct X {
+  a:int;
+  b:string;
+};
+fun show(self:X) => self.b + " " + self.a.str;
+\end{minted}
+
+
+\section{Lists}
+A list is a variable length sequence of values of the same type.
+An empty list of \verb%int% is denoted \verb%Empty[int]%.
+Given a list you can create a new one with a new element
+on the front using the constructor \verb%Cons% as follows:
+
+\begin{minted}{felix}
+var x = Empty[int];
+x = Cons (1,x);
+x = Cons (2,x);
+x = Cons (3,x);
+var y = Cons (3, Cons (2, Cons (1, Empty[int])));
+\end{minted}
+
+Of course this is messy! Here is a better way:
+
+\begin{minted}{felix}
+var z = list (3,2,1);
+\end{minted}
+
+This method converts a tuple to a list. You can add two lists
+together, prepend a value, or add a value to the end of a list
+with the infix \verb%+% operator:
+
+\begin{minted}{felix}
+var x = list (1,2,3);
+x = 1 + x + x + 42;
+\end{minted}
+
+Take care that + associates to the left and you don't
+accidentally add two integers together! There is a second
+operator you can use as well which is right associative and
+prepends an element to a list:
+
+\begin{minted}{felix}
+var x = 3 ! 2 ! 1 ! Empty[int];
+x = 42 ! x;
+\end{minted}
+
+You can use the \verb%len% function to find the length of a list,
+and test if an element is in a list using the \verb%in% operator:
+
+\begin{minted}{felix}
+var x = list (1,2,3);
+assert len x in x; // 3 is in the list!
+\end{minted}
+
+Lists in Felix are purely functional data structures: you cannot
+modify a list. All the nodes in a list are immutable, which
+means when you prepend an element $A$ to a list $L$, and then
+prepends an element $P$ to the same list $L$, the tail of the list
+is shared. Lists can be passed around efficiently without copying.
+
+When some prefix of a list is no longer accessible because the function
+prepending the prefix returns without saving the list, the prefix
+elements will be removed automatically by the Felix garbage collector.
+
+\section{Pattern Matching and Union}
+A list is actually defined like this:
+
+\begin{minted}{felix}
+union list[T] = 
+  | Empty
+  | Cons of T * list[T]
+;
+\end{minted}
+
+The \verb%union% construction defines a nominally typed
+sum. The words \verb%Empty% and \verb%Cons% are called
+type constructors. This union is also polymorphic!
+This means you can make lists of any type. The first 
+case is just an empty list. The second case, \verb%Cons%
+joins together an element of type \verb%T% and another list.
+In other words it creates a new list by adding a new
+element onto the front. A type like this is called
+an \href{https://en.wikipedia.org/wiki/Inductive_type}{inductive type}.
+
+A list can be taken apart with a pattern match:
+
+\begin{minted}{felix}
+var x = list (3,2,1);
+println$
+  match x with
+  | #Empty =>  "Empty"
+  | Cons(v, tail) => "first element " + v.str
+  endmatch
+;
+\end{minted}
+
+Note you have to write \verb%#% in front of \verb%Empty%. This is to
+tell Felix that you mean a constructor taking no arguments.
+Otherwise it will be taken as a pattern variable!
+
+\subsection{Option Type}
+Another commonly used union type is the option type \verb%opt%:
+
+\begin{minted}{felix}
+union opt[T] = 
+  | None 
+  | Some of T
+;
+
+fun maybe_divide (num:int, denom:int) =>
+  if denom == 0 then None[int]
+  else Some (num/denom)
+;
+
+println$
+  match maybe_divide (10,0) with
+  | #None =>  "Divide by Zero"
+  | Some j => "Quotient " + j.str
+  endmatch
+;
+\end{minted}
+
+\subsection{Enumerations {\tt enum}}
+If all the constructors of a union have no arguments
+an alternate form can be used:
+
+\begin{minted}{felix}
+enum colour = red, green, blue; // equivalent to
+union colour = red | green | blue;
+\end{minted}
+
+\chapter{Algorithms}
+\section{Functions}
+We have enough preliminaries now to finally introduce functions.
+Without further ado, here are some basic functions:
+
+\begin{minted}{felix}
+fun twice (x:int) : int => x + x;
+fun thrice (x:int) :int  => twice x + x;
+\end{minted}
+
+Functions also have a more expanded form:
+
+\begin{minted}{felix}
+fun trickdiv (num:int, denom:int) :int = 
+{
+   var y = if denom == 0 then 1 else denom endif;
+   return num / y;
+}
+\end{minted}
+
+There is a rule for functions: 
+
+{\bf functions defined with the \verb%fun% binder may not have observable
+side effects}
+
+The rule is relaxed; that is, not enforced,
+to permit debugging, profiling, coverage checking, etc.
+
+\subsubsection{Pattern Syntax for Functions}
+Functions can also be defined with an abbreviated
+form which merges the definition with a pattern match:
+
+\begin{minted}{felix}
+fun len[T] : list[T] -> int =
+  | #Empty => 0
+  | Cons (_, tail) => 1 + len tail
+;
+\end{minted}
+
+This is just shorthand for
+
+\begin{minted}{felix}
+fun len[T] (x:list[T]): int =>
+  match x with
+  | #Empty => 0
+  | Cons (_, tail) => 1 + len tail
+  endmatch
+;
+\end{minted}
+
+
+\subsection{Calling functions}
+In Felix you can call a function using operator whitespace:
+
+\begin{minted}{felix}
+fun twice (x:int) : int => x + x;
+println$ twice 42;
+\end{minted}
+
+This is the usual prefix mathematical notation. In Felix, parentheses
+are not required around arguments to make a function call, they are
+just used for grouping. Some programmers also like postfix notation
+and you can use that too:
+
+\begin{minted}{felix}
+fun twice (x:int) : int => x + x;
+fun thrice (x:int) :int  => twice x + x;
+println$ thrice 42.twice;
+\end{minted}
+
+Here, \verb%twice% is called first, because operator \verb%.% has a higher
+precedence that operator whitepsace. Both operators are left associative!
+Operator dot is called {\em reverse application} because the argument
+is written first, then the function to apply.
+
+Felix also has operator dollar \verb%$% which is a very low precedence
+right associative operator:
+
+\begin{minted}{felix}
+println$ k $ h $ g 42.f;
+println ( k ( h ( g ( f 42))));
+\end{minted}
+
+and there is also a left associative low precedence reverse order
+operator too:
+
+\begin{minted}{felix}
+h $ g 42.f |> k |> println;
+println ( k ( h ( g ( f 42))));
+\end{minted}
+
+This is called {\em reverse pipe application} and has an even lower
+precedence than forward dollar application.
+
+There is one more application operator!
+
+\begin{minted}{felix}
+fun hhgttg() => 42;
+h $ g #hhgttg.f |> k |> println;
+\end{minted}
+
+Operator hash \verb%#% just applies a function
+to the unit tuple \verb%()%, it is often used
+for constant functions. It is a very high precedence operator.
+
+It's no wonder they wanted to spacedoze 
+the Earth to build a freeway.
+
+\subsection{Overloading}
+You can define two functions with the same name, this
+is never an error. However to apply a function with the 
+same name as another, it must be possible to distinguish
+between them.
+
+{\em Overloading} provides one method for doing this:
+
+\begin{minted}{felix}
+fun twice (x:int) => x + x;
+fun twice (x:double) => x + x;
+println$ twice 42, twice 42.1;
+\end{minted}
+
+In the above example, the first application in the \verb%println%
+argument tuple calls the first function, because the argument is
+of type \verb%int%, and the second application calls the second
+function because the argument is of type \verb%double%.
+
+Selecting functions based on matching the argument and parameter
+types like this is called overload resolution. Note that unlike
+C++ there are no automatic conversions in Felix. The argument
+and parameter type must match exactly.
+
+Overloading first looks in the scope of the application.
+If matching fails to find any candidate functions, it proceeds
+to the next outer level, until there are no more levels left.
+
+\subsubsection{Named Arguments}
+In Felix you can use named arguments. This helps
+to resolve overload clashes when the candidate
+functions have the same type. It is also useful if
+you forget the order of the arguments.
+
+\begin{minted}{felix}
+fun f(x:int, y:int) => x + y;
+fun f(a:int, b:int) => a - b;
+println$ f (y=1, x=2), f (a=1, b=2);
+\end{minted}
+
+In fact, a function using named parameters will also
+accept a value of record type:
+
+\begin{minted}{felix}
+fun f(x:int, y:int) => x + y;
+fun f(a:int, b:int) => a - b;
+var xy = (y=1, x=2);
+var ab = (a=1, b=2);
+println$ f xy, f ab;
+\end{minted}
+
+\subsubsection{Default Arguments}
+A function can be specified with default arguments:
+
+\begin{minted}{felix}
+fun f(x:int=5, y:int) => x + y;
+println$ f (y=1);
+\end{minted}
+
+If you wish to use default arguments you must use the
+named parameters feature directly or provide a record
+argument with missing fields. Default arguments do not
+work with tuple arguments.
+
+\subsection{Higher Order Functions}
+In Felix, a function can become a first class value.
+This value is called a closure. Functions that accept
+functions as arguments, or return functions, are
+called higher order functions or {\em HOF}'s.
+
+\begin{minted}{felix}
+fun twice(x:int) => x + x;
+fun both (x:int, y:int, g:int -> int) => g x, g y;
+println$ both (3,7,twice);
+\end{minted}
+
+The function \verb%both% applies its argument \verb%g% to
+both x and y, returning the pair of results. On the
+other hand here:
+
+\begin{minted}{felix}
+fun increment (x:int) : int * int -> int = 
+{
+   fun add (y:int) => x + y;
+   return add;
+}
+println$ increment 3 42; // 45
+var add3 = increment 3;
+println$ add3 42; // 45
+\end{minted}
+
+the increment function returns another function which increments
+its argument y, when applied, by the argument x first passed to it.
+The variable \verb%add3% binds the first argument x, and is another
+function which will add that x to its argument when applied.
+
+The function \verb%increment% is said to have {\em arity} 2
+because it appears to accept two arguments. In fact, there is 
+no such thing as a function accepting two arguments.
+
+The function of higher arity is sometimes said to be {\em curried}
+named for theorist Howard Curry, although some prefer Indian food.
+If a function returns a function which is not immediately
+applied to an argument it is said, surprisingly, to be
+{\em partially applied}. When Felix does overload
+resolution it can take into account as many arguments
+as are provided for a curried function application.
+It finds candidates based on the first argument first,
+then tries to whittle down the list based on the next
+argument, and so on.
+
+\subsection{Polymorphic Functions}
+In Felix, you can write functions that work with a family
+of types. 
+
+\begin{minted}{felix}
+fun diag[T] (x:T) => x, x;
+\end{minted}
+
+This is the famous diagonal function, which makes two
+copies of its argument. It works for any type, so it
+is a polymorphic function. In general such functions
+can {\em only} do structural manipulations so they are
+of limited utility.
+
+Unless, that is, they're HOFs! For example:
+
+\begin{minted}{felix}
+fun add3[T] (x:T, y:T, z:T, add:T * T -> T) => 
+  add (x, add (y,z))
+;
+\end{minted}
+
+\subsubsection{Overloading Polymorphic Functions}
+Polymorphic functions can be overloaded too.
+However unlike ordinary functions, more than one
+function might match. For example:
+
+\begin{minted}{felix}
+fun f[U,V] (x: U, y: V) => y,x;
+fun f[W] (x:W, y:int) => y+1,x;
+println$ f (2,4); // which f?
+\end{minted}
+
+A function matches if the parameter type can be specialised
+to the argument type by substituting some type expression for
+each of the function's type variables. In the above case
+
+$$\begin{aligned}
+\verb%U% &\rightarrow \verb%int%\\
+\verb%V% &\rightarrow \verb%int% 
+\end{aligned}
+$$
+
+causes the first function to match and
+
+$$ \verb%W% \rightarrow \verb%int% $$
+
+causes the second one to match.
+
+In this case the most specialised function is chosen if there
+is one. Here, the first function is clearly more general because
+the substitution:
+
+$$\begin{aligned}
+\verb%U% &\rightarrow \verb%W%\\
+\verb%V% &\rightarrow \verb%int% 
+\end{aligned}
+$$
+
+into the type of the first function's parameter yields the second
+function's parameter type. Since there is no substitution in the
+other direction, the second function is strictly more specialised
+and so it is selected.
+ 
+The process of finding a substiution which makes types with type
+variables equal is called 
+\href{https://en.wikipedia.org/wiki/Unification_%28computer_science%29}{unification}.
+The substitution effecting equality is called a {\em unifier}, and the
+two terms rendered equal are said to be {\em unified}. There can
+be more than one unifier, a most general unifier is one which can
+produce all the other unifiers by some substitutions. If there is
+a most general unifier it is unique up to changing variable names.
+
+\subsection{Conversion Operators}
+Felix has a special shortcut for defining conversions:
+
+\begin{minted}{felix}
+typedef cart_complex = (x:double, y:double);
+typedef polar_complex = (r:double, theta:double);
+
+ctor cart_complex (z: polar_complex) =>
+  (x=z.r * cos z.theta, z.r * sin z.theta)
+;
+
+ctor polar_complex (z: cart_complex) => 
+  (r = sqrt (z.x.sqr + z.y.sqr), theta = tan (y / z))
+;
+
+ctor cart_complex (x:double) => (x=x,y=0.0);
+ctor polar_complex (x:double) => (r=x, theta=0.0);
+
+var z1 = cart_complex 0.5;
+var z2 = polar_complex z1;
+println$ z2;
+\end{minted}
+
+The binder \verb%ctor% must be followed by the name of a type.
+A \verb%typedef% alias will do. The definition is expanded:
+
+\begin{minted}{felix}
+ctor T (x:arg) => expr;
+
+//equivalent to:
+fun _ctor_T (x:arg) : T => expr;
+\end{minted}
+
+When Felix finds an application $\verb%f% a$ where \verb%f% is a simple name,
+it first tries to find a function named \verb%f%. 
+If a type name is found instead of a function,
+Felix looks again for a function named \verb%_ctor_%$f$ where $f$ is the type name.
+
+\subsection{Apply operator}
+When Felix finds an application $\verb%f% a$ where \verb%f% is a simple name,
+it first tries to find a function named \verb%f%. 
+If a value of some type $F$ is found instead, 
+Felix looks again for a function named \verb%apply% with
+a tuple argument of type \verb%F * A% where $A$ is the
+type of the argument. For example:
+
+\begin{minted}{felix}
+fun apply (x:string, y:string) => x + y;
+println$ "Hello" " " "World";
+
+fun apply (x:double, y:double) => x * y;
+fun apply (x:int, y:double) => x * y;
+var x = 2.3;
+println$ 2 x + 4 x x;
+\end{minted}
+
+This allows objects of any type other than functions to also
+act as functions in a user defined way.
+
+
+\section{Procedures}
+A {\em procedure} is like a function which returns no value and
+is allowed to have side effects.
+
+\begin{minted}{felix}
+proc printint(x:int)
+{
+   println$ "An integer " + x.str;
+}
+\end{minted}
+
+This is in fact syntactic sugar for
+
+\begin{minted}{felix}
+fun printint(x:int) : void =
+{
+   println$ "An integer " + x.str;
+}
+
+printit 42;
+\end{minted}
+
+The pseudo type \verb%void% is the type you use when 
+there is no value.
+
+Procedures with unit argument type have a special call notation,
+the unit argument () can be dropped:
+
+\begin{minted}{felix}
+proc print42()
+{
+   println$ "The world is coming to an end";
+}
+
+print42; // no () required
+\end{minted}
+
+You're right, I hate excess parens!
+
+\section{Generators}
+There is one further special kind of function, 
+called a {\em generator}. A generator returns
+a value and may have a side effect.
+
+\begin{minted}{felix}
+var counter = 0;
+gen fresh() : int =
+{
+  ++counter;
+  return counter;
+}
+println$ #fresh, #fresh; // 1,2
+\end{minted}
+
+The term generator comes from the exemplar generator,
+namely the random number generators. 
+
+\section{Control Flow}
+Felix has a rich control flow architecture.
+Here are some control flow constucts.
+
+\subsection{Conditional}
+Here is the expanded procedural conditional branch.
+
+\begin{minted}{felix}
+begin
+  if cond do
+    something;
+  elif cond2 do
+    something_more;
+  else
+    last; resort;
+  done
+end
+\end{minted}
+
+There are also several short forms.
+
+\begin{minted}{felix}
+  if cond goto lab;
+  if cond return;
+\end{minted}
+
+\subsection{Jumps}
+The usual \verb%goto% and target label.
+
+\begin{minted}{felix}
+begin
+  var i = 1;
+  start:> // label
+    call println i; // procedure call
+    ++i; // increment i 
+    if i < 10 goto start; // conditional jump
+end
+\end{minted}
+
+\subsection{Loops}
+Low level inclusive loops are flat code. Jumping
+in and out with \verb%goto% is permitted. The control
+variable can optionally be declared in a loop, and
+exists in the whole containing scope.
+
+\subsubsection{Counting Loops}
+In this forms, the control variable may be declared
+by the loop if necessary. Note the control variable
+is accessible outside the loop!
+
+\begin{minted}{felix}
+for var i:int in 0 upto 10 do // inclusive
+  println$ i; // procedure call
+done
+
+for i in 10 downto 0 do // inclusive
+  println$ i; // procedure call
+done
+\end{minted}
+
+\subsubsection{While Loops}
+Here is the usual while loop and its negation the until loop.
+
+\begin{minted}{felix}
+// While loop
+var i = 0;
+while i < 10 do
+  println$ i;
+  ++i; 
+done
+
+// until loop
+until i == 0 do 
+  println i;
+  --i; // decrement
+done
+\end{minted}
+
+\subsubsection{Index Iterators}
+And here are loops using iterators, note that the
+control variable is auto declared:
+
+\begin{minted}{felix}
+// inclusive subrange of int iterator
+for j in 0..10 do 
+  println$ j; 
+done
+
+// exclusive subrange of int iterator
+for k in 0..<10 do 
+  println$ k;
+done
+\end{minted}
+
+\subsubsection{Visitors}
+Most data structures provide iterators for
+visitor loops:
+
+\begin{minted}{felix}
+// array iterator
+for j in (1,2,3,4,5,6,7,8,9,10) do
+  println$ j; // array iterator
+done
+
+// list iterator
+for j in list (1,2,3,4,5,6,7,8,9,19) do
+  println$ i; // list iterator
+done
+\end{minted}
+
+\subsubsection{C style}
+This is the fastest and most general loop:
+
+\begin{minted}{felix}
+for (i=0; i<10; ++i;) do // C style with addition of trailing semicolon
+  println$ i;
+done
+\end{minted}
+
+Iterator based loops are implemented using yielding generators
+as explained in the next section.
+
+\subsubsection{Breaks}
+Felix allows modification of loop control flow as follows:
+
+\begin{minted}{felix}
+var sum = 0;
+iloop: for i in 0 upto 10 do
+  var prod = 0;
+  jioop: for j in 0 upto 10 do
+    if j % 2 == 0 continue jloop;
+    prod = prod * j;
+    if prod > 5000 break jloop;
+  done
+  if sum < 20000 redo iloop;
+done
+\end{minted}
+
+The \verb%break%, \verb%continue% and \verb%redo% statements
+cause early exit, early continuation, or complete restarting
+of the \verb%for%, \verb%forall%, \verb%while%, or \verb%until% loop
+specified by the loop name. Loops can be named with an identifier
+followed by a colon \verb%:% immediately preceeding the loop.
+
+\subsection{Statement Groups}
+\subsubsection{Do group}
+Statements can be grouped using the \verb%do .. done% constuction.
+The body of a loop is a single statement, the do group is used
+to present the parser many statements considered as one.
+Jumps into and out of a do group are allowed, they do 
+not represent a scope.
+
+\subsubsection{Block function}
+There is another group called a {\em block} which does
+represent a scope: the \verb%begin .. end% construction.
+You can jump out of a block, but you cannot jump in, and
+you cannot return.
+
+There is a reason for this: 
+
+\begin{minted}{felix}
+var doit = { println$ "Hello"; println$ " World"; };
+call doit ();
+\end{minted}
+
+The expression in curly braces \verb%{}% is an anonymous
+procedure of type $1 \rightarrow 0$. To call this
+procedure, we must apply it to a value of type unit,
+and there is only one such value, namely ().
+
+The \verb%begin..end% construction is just an anonymous
+procedure which is then applied to unit immediately, so that
+
+\begin{minted}{felix}
+{ println$ "Hello"; println$ " World"; } ();
+\end{minted}
+
+is equivalent to
+
+\begin{minted}{felix}
+{ println$ "Hello"; println$ " World"; };
+\end{minted}
+
+which is equivalent to
+
+\begin{minted}{felix}
+begin println$ "Hello"; println$ " World"; end
+\end{minted}
+
+only we don't need the trailing semi-colon \verb%;%.
+
+So because this is a procedure, a \verb%return% statement
+would just return from the anonymous procedure, and not
+the containing procedure. To work around this you can 
+name the procedure from which you wish to return
+using a \verb%return from% statement:
+
+\begin{minted}{felix}
+proc outer (x:int)
+{
+   {
+      println$ "Inner";
+      if x > 0 do return from outer; done
+   };
+   println$ "Negative";
+}
+\end{minted}
+
+Do not try to return from a procedure which is not active,
+all hell will break loose.
+
+\section{Yielding Generator}
+Here is a way to write and use what is called an {\em yielding generator}.
+This is a generator utilising a \verb%yield% statement.
+
+\begin{minted}{felix}
+begin
+  gen down (var start:int) () = 
+  {
+    for i in start downto 0 do
+      yield i;
+    done
+    return i; 
+  }
+
+  var it = down 10;
+  var x = #it;
+  while x >= 0 do
+    println x;
+    x = #it;
+  done
+end
+\end{minted}
+
+A yielding generator must be a function of type $1\rightarrow T$ for
+some type T. In this case \verb%down 10% has that type. A closure
+over the generator must be assigned to a variable to hold the state,
+named \verb%it% in the example.
+
+The closured stored in the variable is then called by applying it
+to the unit value (), written like \verb%#it% here because I hate
+parens. This causes the generator to run until it yields a value
+or returns.
+
+The next call to the generator causes it to proceed from where it
+left off after a yield, or to do the terminating return again
+if necessary. So yielding generators can always be called infinitely
+producing a stream of values.
+
+The caller and the generator are coroutine which swap control
+back and forth as required separately by each, that is, they
+are both masters. The generator is a so-called {\em push master}
+and the client is a {\em pull} master.
+
+We will see shortly that Felix has different techniques to
+implement fully general coroutines.
+
+\chapter{Concepts: type classes}
+Felix provides a way of systematically organising functions and operators
+known as {\em type classes}, modelled on the construction
+of the same name in Haskell.
+
+\section{Monomorphic Classes}
+A nonpolymorphic \verb%class% is just a closed namespace:
+
+\begin{minted}{felix}
+class X 
+{
+   fun f(x:int) => x + 1;
+   fun g(x:int) => x * x;
+}
+
+println$ X::f 42, X::g 42
+\end{minted}
+
+As well as using explicit qualification, you can open a class:
+
+\begin{minted}{felix}
+open X;
+fun g(x:int) => "Hello " + x.str;
+println$ f 42, g 42; // X::f, root::g
+\end{minted}
+
+When a class is opened it occupies a shadow lookup space just behind
+the space into which it is opened. Therefore the local \verb%g%
+above hides \verb%X::g%. The global namespace is called \verb%root%
+in case you need explicit qualification.
+
+When you open a class inside another, the symbols of the former
+are available for definition of the latter, but they are
+not available to clients of the latter. Thus opening is not transititive.
+
+\begin{minted}{felix}
+class A { fun f(x:int) => x; }
+class B { open A; fun g (x:int) => f x; }
+type-error println$ B::f 42; // no f in B
+\end{minted}
+
+If you want to include the symbols of one class in another,
+use \verb%inherit% instead:
+
+\begin{minted}{felix}
+class A { fun f(x:int) => x; }
+class B { inherit A; fun g (x:int) => f x; }
+println$ B::f 42; // OK, f is in B
+\end{minted}
+
+\section{Polymorphic Classes}
+When a class is polymorphic things get more interesteding.
+Polymorphic classes are basically collections of template
+declarations and definitions.
+
+\begin{minted}{felix}
+class AddGroup[T] 
+{
+   virtual fun == : T * T -> bool;
+   fun != (x:T, y:T) => not (x == t);
+
+   virtual fun + : T * T -> T;
+   virtual fun zero : 1 -> T;
+   virtual fun neg : T -> T;
+   fun - (x:T, Y:T) : T =>  x + neg y;
+
+   axiom negation (x:T): x + neg x == zero();
+
+   private fun mulby (x:T, count: int) : T =
+   {
+     var res = zero();
+     for i in 0 ..< count do res = res + x; done
+     return res;
+   }
+   fun * (x:T, count: int) : T => mulby (x,count);
+}
+\end{minted}
+
+The above class specifies an additive group. The specification
+is entirely abstract because it is given entirely in terms
+of functions. The four \verb%virtual% functions are undefined
+here and form the {\em basis} of the abstraction.
+
+The inequality, subtraction,  and multiplication
+functions shown are defined in terms of
+the abstract basis. The \verb%mulby% function is marked
+as \verb%private% and is only a local helper function,
+it will not be exported as part of the class interface.
+
+The \verb%axiom% is a semantic constraint on the behaviour 
+of the functions.
+
+As you see the class above has "holes" in it, namely the undefined
+virtual functions. Here is how to provide definitions:
+
+\begin{minted}{felix}
+struct MyInt { v:int; } // to avoid conflict with std lib
+
+instance AddGroup[MyInt]
+{
+  fun == (x:MyInt, y:MyInt) => x.v == y.v;
+  fun zero () => MyInt (0);
+  fun + (x:MyInt, y:MyInt) => MyInt (x.v + y.v);
+  fun - (x:MyInt) => MyInt (-x.v);
+}
+\end{minted}
+
+To use this, it is convenient to open our class for our type:
+
+\begin{minted}{felix}
+open AddGroup[MyInt];
+
+var x = MyInt(1);
+var y = MyInt(42);
+var z = x + -y * 3 - MyInt(74) != AddGroup[MyInt]::zero(); 
+\end{minted}
+
+Note that we used explicit qualification for the \verb%zero%
+function although it is not necessary in this case.
+In general, functions with the same name taking a unit
+argument have to be explicitly qualified to distinguish them,
+there is no type distinction in the argument for overload
+resolution to use.
+
+\subsection{Two Phase Binding}
+Felix uses a lookup model which provides two phases of
+binding. In the first phase, all binding is polymorphic.
+Bindings to virtual functions may occur in this phase.
+
+In the second phase, the whole program is monomorphised,
+eliminating all type variables. This phase is sometimes
+called {\em instantiation}. When an application or call of
+a virtual function is seen, Felix searches for an instantce
+matching the monomorphic type parameters and replaces
+the virtual call with a concrete one, or bugs out if
+no instance is found.
+
+\subsection{Polymorphic Recursion}
+You should note that instance functions may themselves
+contain virtual calls, and this permits the instantiator
+to implement polymorphic recursion. That is, a limited
+form of {\em second order polymorphism} is available
+in Felix, but only via type classes. Polymorphic
+recursions must either bottom out on monomorphic
+types, or reduce to monomorphic recursion after a
+finite number of steps. The current compiler does 
+not check this in advance, and instead just uses an
+expansion limit.
+
+\chapter{Dynamic Objects}
+Felix provides a dynamic kind of object and interface with
+syntax similar to Java. 
+
+\begin{minted}{felix}
+interface Employee_t { 
+  name: 1 -> string;
+  service: 1 -> double;
+  base_pay: 1-> double;
+  pay : double  -> double;
+  set_base_pay : double -> 0;
+}
+
+object Employee (
+  ename: string, 
+  eservice: double,
+  abase_pay: double
+) 
+implements Employee_t =
+{
+  var ebase_pay = abase_pay;
+  method fun name () => ename;
+  method fun service () => eservice;
+  method fun base_pay () => ebase_pay;
+  method proc set_base_pay (v:double) => ebase_pay = v;
+  method fun pay (extra: double) => 
+    extra + service * ebase_pay / 52.0;
+}
+\end{minted}
+
+To use objects:
+
+\begin{minted}{felix}
+proc show (p: Employee_t) {
+  println$ "Employee " + #(p.name) + 
+    " earns " + p.pay 0.0 + " per week"
+  ;
+}
+
+var joe  = Employee ("joe", 1.5, 90_000.0);
+show joe; 
+\end{minted}
+
+Dynamic objects do not introduce any new functionality
+to the Felix language. An \verb%interface% is nothing more
+than an alias for a record type:
+
+\begin{minted}{felix}
+typedef Employee_t = (
+  name: 1 -> string, 
+  service: 1 -> double,
+  base_pay: 1 -> double,
+  pay: double -> double,
+  set_base_pay: double -> 0,
+); 
+\end{minted}
+
+An object is precisely a function which returns a value of the
+specified interface type by returning a record of closures of
+all the specified methods:
+
+\begin{minted}{felix}
+fun Employee (
+  ename: string, 
+  eservice: double,
+  abase_pay: double
+) : Employee_t =
+{
+  var ebase_pay = abase_pay;
+
+  fun name () => ename;
+  fun service () => eservice;
+  fun base_pay () => ebase_pay;
+  proc set_base_pay (v:double) => ebase_pay = v;
+  fun pay (extra: double) => 
+    extra + service * ebase_pay / 52.0;
+
+  return (
+    name = name, 
+    service = service, 
+    base_pay = base_pay, 
+    pay = pay,
+    set_base_pay = set_base_pay
+  );
+}
+\end{minted}
+
+Felix dynamic objects provide encapsulation based on functional abstraction.
+In particular to use a value of an object type the client only
+requires knowledge of the interface.
+
+The \verb%interface% clause of the object specification can be
+left out in the same way as the return type of a function can 
+be left out. Similarly, objects can be anonymous, in the same
+way functions can be anonymous:
+
+\begin{minted}{felix}
+var Cplx = object (x:double, y:double) =
+  {
+    method fun Real () => x;
+    method fun Imag () => y;
+    method fun Arg () => atan2 (y,x);
+    method fun Mod () => sqrt (x * x + y * y);
+  }
+;
+var z = Cplx (1.0,1.0);
+println$ 
+  "Complex " + #(z.Real) + #(z.Imag)+"i = " +
+  #(z.Mod)+"e^" + #(z.Arg)+"i"
+;
+\end{minted}
+
+Note carefully that \verb%Cplx% is a closure over the object
+constructor, that is, it is a function returning a record
+of methods, it has to be applied to an argument to actually
+produce the object.
+
+Because object types are just record types, we can use 
+dynamic techniques are row polymorphism to provide very 
+strong statically typed object management. The system is
+extremely powerful and much more expressive than C++ or
+Java objects; of course the downside of such power is the
+usual ability to shoot yourself in the foot.
+
+\section{Plugins}
+Plugins are a special kind of object for which the implementation
+is dynamically loaded at run time from a shared library.
+Plugins can also be preloaded so the plugin interface can be used
+for a statically linked program without modification.
+
+\begin{table}
+\caption{Summary of Types}
+\label{Summary of Types}
+\centering
+\begin{tabular}[c]{lll}
+\multicolumn{3}{c}{Primitive}\\
+\hline
+integers\\
+floats\\
+strings\\
+regexps\\
+\multicolumn{3}{c}{Nominal}\\
+\hline
+unions\\
+structs\\
+cstructs\\
+\multicolumn{3}{c}{Structural Products}\\
+\hline
+unit&1\\
+tuples&$T_0 \verb%*% T_2 \verb%*% ... \verb%*% T_{n-1}$\\
+records&$(f_0:T_0, f_1:T_1, ... ,f_{n-1}:T_{n-1})$\\
+\multicolumn{3}{c}{Structural Sums}\\
+\hline
+void&0\\
+bool&2\\
+unitsums&99\\
+sums&$T_0 \verb%+% T_2 \verb%+% ... \verb%+% T_{n-1}$\\
+variants\\
+\multicolumn{3}{c}{Structural Exponentials}\\
+\hline
+arrays&$T\verb%^%N$\\
+functions&$D\rightarrow C$\\
+cfunctions&$D \verb%-->% C$\\
+pointers&$\verb%&%T$\\
+\multicolumn{3}{c}{Library}\\
+\hline
+option&\verb%opt[T]=Some of T |None%&option type\\
+list&\verb%list[T]=Empty|Cons of (T*list[T])%&functional list\\
+varray&varray[T]&bounded stable variable length array\\
+darray&darray[T]&unbounded reallocable variable length array\\
+sarray&sparse array\\
+bsarray&bounded sparse array\\
+strdict&string dictionary\\
+judy array&Judy1, JudyL arrays\\
+schannel&synchronous channels\\
+pchannel&asynchronous channels\\
+\end{tabular}
+\end{table}
+
+
+\begin{table}
+\caption{Summary of Binders}
+\label{Summary of Binders}
+\begin{tabular}[c]{lll}
+\multicolumn{3}{c}{Binders}\\
+\hline
+var&declare and initialise a variable\\
+val&name a value\\
+def&compound assignment, variable binder, and value binder\\
+fun&define a function\\
+cfun&define a function with C function type\\
+gen&define a generator\\
+ctor&define a conversion function\\
+proc&define a procedure or fibre\\
+cproc&define a procedure with C function type\\
+struct&define a struct\\
+cstruct&model an existing C struct\\
+union&define a discriminated union\\
+enum&define an enumeration\\
+class&define a type class\\
+interface&define an object interface\\
+object&define an object constructor\\
+typedef&define an alias for a type\\
+syntax&define new syntax\\
+type..new&define an abstract type\\
+\multicolumn{3}{c}{Directives}\\
+\hline
+include&include a library file\\
+inherit&inherit symbols into a class\\
+open&open a class\\
+requires&specify requirements of C bindings\\
+open syntax&augment parser with new grammar\\
+comment&write a comment\\
+todo&specify future code\\
+private&do not export symbol from class\\
+rename&rename or import a symbol\\
+macro val&define a macro\\
+forall&generate a table\\
+\end{tabular}
+\end{table}
+
+
+\begin{table}
+\caption{Summary of Statements}
+\label{Summary of Statements}
+\begin{tabular}[c]{lll}
+\multicolumn{3}{c}{Control}\\
+\hline
+goto&unconditional control transfer\\
+goto-indirect&goto address stored in LABEL variable\\
+return&return from procedure or function\\
+return from&return from specified procedure\\
+call&call a procedure\\
+jump&jump to procedure with arguments\\
+yield&suspend generator emitting value\\
+halt&stop program\\
+if..do..elif..else..done&standard conditional\\
+match..with&pattern matching\\
+with&execute statements with temporary binders\\
+trace&trace execution on UDP port\\
+type-error&document compilation error\\
+\verb%_svc%&Felix scheduler service call\\
+\verb%spawn_fthread%&schedule fibre\\
+\verb%spawn_pthread%&schedule pre-emptive thread\\
+\verb%read%&read channel\\
+\verb%write%&write channel\\
+\verb%branch-and-link%&low level control exchange\\
+\multicolumn{3}{c}{loops}\\
+\hline
+while&execute whilst condition true\\
+until&execute until condition true\\
+for&execute repeatedly with bounded control variable\\
+break&exit specified loop\\
+continue&start next iteration of specified loop\\
+redo&restart current iterator of specified loop\\
+\multicolumn{3}{c}{Groups}\\
+\hline
+do..done&statement group\\
+begin..end&scoped statement group\\
+perform&single statement\\
+\multicolumn{3}{c}{Assignment}\\
+\hline
+\verb%p<-a;%\\
+\verb%v=a;%\\
+\verb%v1<->v2;%\\
+\verb%v+=a;%\\
+\verb%v-=a;%\\
+\verb%v*=a;%\\
+\verb%v/=a;%\\
+\verb+v%=a;+\\
+\verb%v&=a;%\\
+\verb%v|=a;%\\
+\verb%v^=a;%\\
+\verb%v<<=a;%\\
+\verb%v>>=a;%\\
+\verb%++v;%\\
+\verb%--v;%\\
+\multicolumn{3}{c}{Plugins}\\
+\hline
+static-link-symbol\\
+static-link-plugin\\
+export\\
+export python\\
+\end{tabular}
+\end{table}
+
+
+\chapter{Interfacing}
+\section{Embedding C++}
+Felix was specifically designed to allow almost seamless lifting
+of C++ code. Indeed most of the standard library types are simply
+types lifted from C++. The provides ABI compatibility with C++
+and hence C, although syntactic compatibility is sacrificed
+in favour of a superior type system.
+
+\subsection{Lifting types}
+The \verb%type% statement is used to lift types from C++.
+
+\begin{minted}{felix}
+type myint = "int";
+var x:myint;
+
+type metres = "double";
+var m: metres;
+
+type mystring="::std::basic_string<char>"
+  requires header '#include <string>'
+;
+var s: mystring;
+\end{minted}
+
+Template classes can be lifted to polymorphic types too,
+the notation \verb%?1%, \verb%?2%, etc is used to associate
+the type variables.
+
+\begin{minted}{felix}
+type vector[T] = "vector<?1>"
+  requires header '#include <vector>'
+;
+var v : vector[int]; // vector<int>
+\end{minted}
+
+Note that if the type is defined in a C or C++
+header you must ensure the header is included in
+the code Felix generates as shown. The \verb%requires%
+clause will be explained shortly.
+
+If you need to lift a lot of non polymorphic types
+at once there is a special shortcut using \verb%ctypes%
+binder:
+
+\begin{minted}{felix}
+ctypes int,long,short,double;
+\end{minted}
+
+\subsection{Lifting Values}
+Of course, types are useless without values, so
+Felix provides a way to lift expressions
+with the \verb%const% binder:
+
+\begin{minted}{felix}
+const one : int = "1";
+const pi : double = "22.0/7";
+var z = pi; // rough approx
+\end{minted}
+
+The Felix type of the lifted value must be given.
+Note the value can be an arbitrary expression.
+
+Note: it is also possible to lift literals by extending
+the Felix grammar. The Felix grammar is actually defined
+in the standard library in user space, so extending
+it can be done in Felix. However it is beyond the
+scope of this quick introduction to explain the somewhat
+arcane details.
+
+\subsection{Lifting Functions}
+Lifting types is all very well, but they're not very useful
+unless they can be manipulated.  C++ functions can be lifted to 
+functions and procedures like this:
+
+\begin{minted}{felix}
+fun addup3 : int * int * int -> int = "$1+$2+$3";
+fun sin : double -> double = "sin($1)" 
+  requires header '#include <math.h>'
+;
+proc coutit[T] : T = "cout << $1;" 
+  requires header "#include <iostream>"
+;
+\end{minted}
+
+Here is a more sophisticated example:
+
+\begin{minted}{felix}
+type vector[T] = "::std::vector<?1>"
+  requires header "#include <vector>"
+;
+proc push_back[T] : vector[T] * T = "$1.push_back($2);";
+fun len[T]: vector[T] -> int = "$1.size()";
+
+type viter[T] = "::std::vector<?1>::const_iterator"
+  requires header "#include <vector>"
+;
+fun deref[T] : viter[T] -> T = "*$1";
+fun next[T] : viter[T] -> viter[T] = "$1+1";
+fun !=[T] : viter[T] * viter[T] -> bool = "$1!=$2";
+
+fun begin[T] : vector[T] -> viter[T] = "$1.begin()";
+fun end[T] : vector[T] -> viter[T] = "$1.end()";
+
+var v : vector[int]; // C++ default init to empty
+begin
+  var l = list (1,2,3,4); // Felix list
+  for elt in l do push_back(v, elt); done
+end
+
+println$ "Length = " + v.len.str;
+
+// print STL vector
+var it = v.begin;
+while it != v.end do
+  println$ deref it;
+  it = next it;
+done
+\end{minted}
+
+There are some things to note here!
+
+First, you may note the functions \verb%begin% and \verb%end%
+used here. This is bad practice, the names \verb%stl_begin%
+and \verb%stl_end% would be better. But the question is: why does
+it work at all? Aren't \verb%begin% and \verb%end% keywords?
+
+The answer is simple: no, they can't be keywords because
+Felix has no keywords! You may have thought that there were
+far too many keywords in Felix but now you know the truth.
+There are none. Zero. Zilch. Felix uses a sophisticated
+extended generalised scannerless LR parser and the grammar
+only recognises certain identifiers as special in
+contexts where they might occur.
+
+The second important thing to note here is that we have
+cheated and some care is needed to avoid a serious issue.
+The Felix \verb%vector% we have defined is polymorphic
+and can be used with any type where the generated C++
+type would work, but it must not be used with a Felix type
+which uses the garbage collector! Unions and nonunit sum types
+and Felix pointers in particular usually require garbage collection, 
+and that includes Felix \verb%list% type.
+
+If you put such a type into a C++ vector, the Felix garbage
+collector will not know it is there, and objects pointed
+at may appear to be unreachable and be deleted when they're
+stored in the vector. It is safe to put these types into
+a vector or other C++ data structure if the pointers can be
+regarded as weak; that is, if they're also stored somewhere
+else which ensures they remain reachable whilst the vector
+is holding them.
+
+The third thing to note is that we have broken a very
+important protocol in this example: we have modified
+a value, namely the vector \verb%v%. Although C++ allows
+modifying values, Felix does not. Felix only allows modification
+of objects. In particular although \verb%v% in the example
+is an addressable store and therefore an object, all modifications
+to objects must be done via the address of the object, that is,
+by using a pointer. Felix has no concept of lvalue like C++,
+and no reference types: we use pointers instead.
+
+The problem is that we have used the abstraction provided by
+the Felix lifting constructs to hide the underlying data type.
+The compiler cannot know that the type you lifted was not
+in fact a pointer to an object and the mutators lifted
+operating through the pointer to modify the object it
+points to. That would be allowed!
+
+Now let us fix it:
+
+\begin{minted}{felix}
+proc push_back[T] : &vector[T] * T = "$1.push_back($2);";
+fun begin[T] : &vector[T] -> viter[T] = "$1.begin()";
+fun end[T] : &vector[T] -> viter[T] = "$1.end()";
+\end{minted}
+
+There! We have to adjust the corresponding usage of course.
+Note carefully the iterator itself is indeed an abstract pointer.
+So operations on the vector via the iterators obtained
+do NOT require any adjustment! Although none are present
+in this example. 
+
+\subsection{Fixed Insertions}
+You can put C++ code directly into Felix. Statements
+can be added with \verb%cstmt% statement. An argument
+may optionally be added. This is basically an anonymous
+Felix procedure written in C++.
+
+Arbitrary expressions can be inserted with
+with \verb%cexpr..endcexpr%, also optionally taking
+an argument.
+ 
+The short form \verb%cvar% lifts a variable.
+
+\begin{minted}{felix}
+cstmt """
+#include <iostream>
+static int x = 1;
+""";
+
+type INT = "int";
+fun + :INT * INT -> INT = "$1 + $2";
+
+fun two (): INT =>
+  cvar [INT] x + cexpr[INT] 'x' endcexpr
+; 
+cstmt "::std::cout <<$1<<endl;" (two());
+\end{minted}
+
+\subsection{Floating Insertions}
+Floating insertions allow you to conditionally include C++
+code based on usage. For example:
+
+\begin{minted}{felix}
+type vector[T] = "::std::vector[?1]"
+  requires header "#include <vector>"
+;
+
+proc push_back[T] (&vector[T] :pv, v:T) =>
+  "$1->push_back($2);"
+;
+
+var x : vector[int];
+push_back (&x,1);
+push_back (&x,2);
+\end{minted}
+
+The \verb%requires% clause creates a dependency, the \verb%header%
+specifier says it depends on a floating insertion, which if required
+will end up near the top of the generated C++ header file for
+your program. This ensures C++ \verb%::std::vector% is in scope.
+
+The requirement is conditional on the type being used, as it is
+in the \verb%push_back% procedure. On the other hand, since it 
+is used in that procedure, it isn't necessary to also place
+a requirement on the use of the procedure. Calling \verb%push_back%
+requires the \verb%push_back% procedure which in turn requires
+the \verb%vector% type, which in turn requires the floating
+insertion.
+
+Floating insertions can be named, and can also have their
+own requirements. All the standard C, C++, and posix headers
+are named in \verb%std/c/c_headers% and \verb%std/c/cxx_headers%.
+
+
+\begin{minted}{felix}
+header iostream = "#include <iostream>";
+type vector[T] = "::std::vector[?1]" requires iostream;
+\end{minted}
+
+\section{Foreign Libraries}
+Here is a quick guide to embedding a foreign C library
+\verb%mylib% with functions \verb%mycal1% and \verb%mycal2%
+on \verb%double%. The first thing of course is to make
+a binding file:
+
+\begin{minted}{felix}
+// file mylib.flx
+class MyLib
+{
+  requires package "mylib";
+  fun mycal1: double -> double = "mycal1($1)";
+  fun mycal2: double -> double = "mycal2($1)";
+}
+\end{minted}
+
+Requirements specified in a \verb%class% are inherited by all
+C bindings in the class. Here is a new requirement on
+a \verb%package%, and there is no requirement on a header file!
+
+Now you must make another file, the package descriptor,
+this one is for Linux:
+
+\begin{minted}{text}
+Name: mylib
+includes: '"mylib.h"'
+cflags: -Imydir
+provides_dlib: -lmylib
+provides_slib: -lmylib
+\end{minted}
+
+The file must be named \verb%mylib.fpc%, and placed in a configuration
+database directory the \verb%flx% processor searches. The specified
+inclusion (\verb%#include "mylib.h"%) will be put in the generated
+C++ code automatically. Furthermore the include file search
+flag \verb%-Imydir% will be added to the C++ compiler compilation
+command line, and the linker flag \verb%-lmylib% added to the compiler
+linkage command line. In this case the \verb%provides_dlib% implies
+the library file \verb%libmylib.so% and \verb%provides_slib% implies
+\verb%libmylib.a%.
+
+This mechanism works on OSX and Windows, and with gcc, clang, cl,
+and other compilers. The objective is to ensure the Felix code is
+platform independent, and shove all the platform dependent stuff
+into a single place. Here's a windows package:
+
+\begin{minted}{text}
+Name: mylib
+includes: '"mylib.h"'
+cflags: /Imydir
+provides_dlib: /DEFAULTLIB:mylib
+provides_slib: /DEFAULTLIB:mylib
+\end{minted}
+
+
+Felix uses a tool called \verb%flx_pkgconfig% to query and 
+manage packages. The tool itself is platform independent and
+the databases are also language neutral.
+
+%========================================================
+\mainmatter
+\part{Functional Programming}
+Functional programming is the art of encoding a system of types and functions.
+
+\chapter{Theory}
+In set-theoretic mathematics a function is triple consisting of a specified
+set $D$ called the {\em domain} a set $C$ call the {\em codomain} and a 
+method $f$ of assigning an element $c \in C$ of the codomain to each element 
+$d\in D$ of the domain, written:
+$$f: D \rightarrow C$$
+where
+$$d\mapsto c$$
+which we also write in equational form as
+$$f (d) = c$$
+
+In programming, the challenge is to find a suitable representation,
+or representations, of the sets as a type, and to encode the functions
+so as to faithfully model the mathematics. In particular if type \verb%D%
+represents set $D$, type \verb%C% represents set $C$, then for all elements
+$d$ of $D$ if value \verb%d% represents $d$ and \verb%f% is an encoding
+of function $f$ then if $c = f(d)$ then \verb%f(d)% represents $c$. Pictorially,
+where $r$ is the representation mapping, we require that
+the following diagram commutes
+$$\begin{CD}
+D@>f>>C\\
+@VVrV @VVrV\\
+\verb%D%@>{\mathtt f}>>\verb%C%
+\end{CD}
+$$
+meaning 
+$$ r \cdot \verb%f% = f \cdot r $$
+
+{\em Category Theory} provides a number of tools to assist in the
+constructions of function encodings, provide a suitable programming
+language is available, and given a fixed choice of data types.
+The most important of these tools is {\em functional decomposition}.
+Given two function $f:A \rightarrow B$ and $g:B \rightarrow C$ we can
+construct the composiite $h = f \cdot g$.
+
+Note we use the midposition dot operator for reverse composition,
+meaning the first function written is applied to an argument
+first, then the second one. Do not confuse this with the lower dot
+which represents reverse application:
+$$
+(f \cdot g) a = (a . f) . g = a . (f \cdot g) = (g \circ f) a
+$$
+
+Now, given some function $h:A\rightarrow C$ it is natural to ask if it can be 
+broken up into two functions $f:A\rightarrow B$ and $g:B\rightarrow C$ for some $B$
+such $h = f \cdot g$. If so, this is called a {\em serial decomposition} of
+the function. 
+
+In Felix code:
+
+\begin{minted}{felix}
+fun f: A -> B;
+fun g: B -> C;
+fun h: A -> C => f \cdot g;
+\end{minted}
+
+Another tool is parallel composition:
+
+\begin{minted}{felix}
+fun f: A -> X;
+fun g: B -> Y;
+fun fg = A * B -> X * Y = f * g;
+\end{minted}
+
+More of these tools are discussed in the section on Categorical Programming.
+
+\chapter{Functional Basics}
+We will begin by considering functional programming
+in the {\em applicative} style. In this style at the basic level
+we have two kinds of entities: {\em values} and {\em functions}.
+We say that applying a function to a value returns a result value
+to which another function may be applied. A composite of function
+applications is called an {\em expression}.
+
+The following program consists of both procedural and functional
+code:
+
+\begin{minted}{felix}
+var x = 1.0;
+var y = 2.0;
+var hyp = sqrt (x^2 + y^2);
+println$ hyp;
+\end{minted}
+
+
+\section{Higher Order Functions (HOF)}
+Ok so, what if I wanted to add up the squares of the numbers 
+in the list? Is there a way to avoid rewriting the whole thing?
+The answer is yes.
+
+Let's start with simple tail recursive function:
+
+\begin{minted}{felix}
+fun addup (x: list[int]) =
+{
+  fun aux (rest: list[int], acc: int) =>
+    match rest with
+    | #Empty => rest
+    | Cons (head, tail) => aux (tail, acc + head)
+    endmatch
+  ;
+  return aux (x, 0);
+}
+\end{minted}
+
+The non-recursive function \verb%addup% contains a nested tail recursive function \verb%aux%.
+
+Then a real HOF:
+
+\begin{minted}{felix}
+fun fold
+(
+  binop: int * int -> int,
+  init: int,
+  lst: list[int]
+) =
+{
+  fun aux (rest: list[int], acc: int) =>
+    match rest with
+    | #Empty => rest
+    | Cons (head, tail) => aux (tail, binop (acc, head))
+    endmatch
+  ;
+  return aux (lst, init);
+}
+\end{minted}
+
+Fold works with any binary operator on \verb%int%. For example:
+
+\begin{minted}{felix}
+lst = list(1,2,3);
+fun addition (x:int, y:int) => x + y;
+assert addup lst == fold (addition, 0, lst);
+\end{minted}
+
+There is another way to write the folding expression:
+
+\begin{minted}{felix}
+assert addup lst == fold ((fun (x:int, y:int)=>x+y), 0, lst);
+\end{minted}
+
+using an unnamed, or anonymous function, sometimes called 
+a lambda.
+
+So what happens if we want to make the sum of the square roots
+of a list of \verb%int%?
+
+It should work, right, if we change the signature of the
+binary operator to 
+
+\begin{minted}{felix}
+double * int -> double
+\end{minted}
+
+and pass an appropriate function. The first component of the argument
+is intended to hold the accumulated sum.
+
+What if the list were of \verb%string% and we wanted to get the
+complete length? Then we'd use
+
+
+\begin{minted}{felix}
+int * string -> int
+\end{minted}
+
+
+\section{Polymorphism}
+Can we generalise, so we only have one function? 
+
+Sure. That's what parametric polymorphism is for.
+Using $R$ for the result type and $V$ for the list element
+type:
+
+\begin{minted}{felix}
+fun fold[V,R] 
+(
+  binop: R * V -> R, 
+  init: R, 
+  lst: list[V]
+) = 
+{
+  fun aux (rest: list[V], acc: R) =>
+    match rest with
+    | #Empty => rest
+    | Cons (head, tail) => aux (tail, binop (acc, head))
+    endmatch
+  ;
+  return aux (lst, init);
+}
+\end{minted}
+
+Now we can write:
+
+\begin{minted}{felix}
+println$ 
+  fold [string,int]
+  (
+    (fun (acc:int, s:string)=>acc + s.len.int),
+    0,
+    (list ("Hello", "World"))
+  )
+;
+\end{minted}
+
+This is all very nice!  Even better we can write:
+
+\begin{minted}{felix}
+println$ 
+  fold 
+  (
+    (fun (acc:int, s:string)=>acc + s.len.int),
+    0,
+    (list ("Hello", "World"))
+  )
+;
+\end{minted}
+
+because the instances of the type variables required
+can be deduced from the arguments.
+
+However our implementation
+has a slight ugliness: we first define a function,
+then return an application of it, which consists of
+two statements, and requires the expanded form of
+function definition.
+
+\section{Let/in construction}
+Can we do it as a one liner, using only the simplified
+form? The answer is yes, using a \verb%let-in% expression:
+
+
+\begin{minted}{felix}
+fun fold[V,R] 
+(
+  binop: R * V -> R, 
+  init:R, 
+  lst:list[V]
+) =>
+  let fun aux (rest: lst, acc: R) =>
+    match rest with
+    | #Empty => rest
+    | Cons (head, tail) => aux (tail, binop (acc, head))
+    endmatch
+  in 
+  aux (lst, init)
+;
+\end{minted}
+
+The fold above utilises what is called a {\em type schema}.
+This is a limited kind of polymorphism also called
+first order polymorphism, or simply {\em templates}.
+Type schemes are limited to having type variables universally
+quantifed on the outside left, and can be instantiated by replacing
+the type variable with an actual type. At run time, there
+are no type variables about. You cannot have a polymorphic
+function at run time. So
+
+\begin{minted}{felix}
+// NO polymorphic function closures in Felix!
+type-error var x = fold[int, string];
+\end{minted}
+
+There is another way to write this, using a method called
+currying, in a form called curry form. This is the more
+conventional form in some languages.
+
+In functional programming languages, functions are first
+class, meaning you can pass them into another function,
+and return them from a function. Consider this:
+
+\begin{minted}{felix}
+fun fold[V,R] (binop: R * V -> R) =
+{
+    fun A(init:R) =
+    {
+      fun B(lst:list[V]) =>
+        let fun aux (rest: list[V], acc: R) =>
+          match rest with
+          | #Empty => acc
+          | Cons (head, tail) => aux (tail, binop (acc, head))
+          endmatch
+        in 
+        aux (lst, init);
+      return B;
+   }
+   return A;
+}
+\end{minted}
+
+What is the type of this function? Well, 
+
+\begin{minted}{felix}
+B: list[V]-> R
+\end{minted}
+
+and since A returns B, its type is:
+
+\begin{minted}{felix}
+A: R -> (list[V]-> R)
+\end{minted}
+
+and since fold returns A its type is
+
+\begin{minted}{felix}
+fold: list[V] -> (R -> (list[V]-> R))
+\end{minted}
+
+How would we use this? Well:
+
+\begin{minted}{felix}
+println$ 
+  (
+    (
+      (
+         fold 
+           (fun (acc:int, s:string)=>acc + s.len.int))
+      )
+      0
+    )
+    (list ("Hello", "World"))
+  )
+;
+\end{minted}
+
+
+Note that the \verb%->% function operator is right associative we
+don't need the parens so we can write this as:
+
+\begin{minted}{felix}
+fold: list[V] -> R -> list[V]-> R
+\end{minted}
+
+getting rid of parens, and, since application (the whitespace operator!) is 
+left associative, we can write:
+
+\begin{minted}{felix}
+println$ 
+  fold 
+    (fun (acc: int, s: string) => acc + s.len.int))
+    0
+    (list ("Hello", "World"))
+;
+\end{minted}
+
+again getting rid of parens. The form:
+
+\begin{minted}{felix}
+  fold fn init alist
+\end{minted}
+
+is the curried form of the call we wrote in tuple form like:
+
+\begin{minted}{felix}
+  fold (fn, init, alist)
+\end{minted}
+
+Curried form has an advantage:
+
+\begin{minted}{felix}
+fun string_lengths (x:list[string]) =>
+   fold 
+    (fun (acc:int, s:string)=>acc + s.len.int)
+    0
+    x
+;
+
+println ("Hello", "World").list.string_lengths; // 10
+\end{minted}
+
+In the function, we simply apply the fold to the
+first three arguments, which returns a function 
+of one argument, a list of strings.
+
+Curried form is so useful, there is syntactic sugar
+for writing functions in this form:
+
+\begin{minted}{felix}
+fun fold[R, V] 
+  (binop: R * V -> R)
+  (init: R)
+  (lst: list[V])
+=>
+  let fun aux (rest: list[V], acc: R) =>
+    match rest with
+    | #Empty => acc
+    | Cons (head, tail) => aux (tail, binop (acc, head))
+    endmatch
+  in 
+  aux (lst, init)
+;
+\end{minted}
+
+
+\chapter{Recursion}
+We shall begin our more serious exploration of Felix with functional programming
+techniques. Perhaps the most important is recursion. A recursive function
+is one which may call itself, directly or indirectly. 
+Recursive functions should usually be reentrant to ensure each fresh invocation
+of the function has its own state variables.
+
+We recognise two kinds of recursion, {\em static recursion} and
+{\em dynamic recursion}.
+
+\section{Static Recursion}
+Static recursion occurs when
+there is a loop in the static call graph. 
+
+It may be {\em direct}, in which
+a function explicitly calls itself, which is also known as {\em self-recursion}.
+
+\begin{minted}{felix}
+// self recursion
+fun factorial (n:int) => 
+  if n <= 1 then 1
+  else n * factorial (n - 1)
+;
+\end{minted}
+
+Next we show {\em indirect} recursion using two functions:
+
+\begin{minted}{felix}
+// indirect recursion
+fun factorial1 (n:int) => 
+  if n <= 1 then 1
+  else n * factorial2 (n - 1)
+;
+fun factorial2 (n:int) => 
+  if n <= 1 then 1
+  else n * factorial1 (n - 1)
+;
+\end{minted}
+
+The example is contrived of course. 
+Indirect recursion between two siblings can always be eliminted by inlining:
+
+\begin{minted}{felix}
+// indirect recursion reduced to direct
+// recursion by inlining
+fun factorial1 (n:int) => 
+  if n <= 1 then 1
+  else n * 
+    ( 
+      let m = n - 1 in
+      if m <= 1 then 1 
+      else
+        m * factorial1 (m - 1)
+    )
+;
+\end{minted}
+
+If the recursion is between a parent child pair, it can be eliminated by
+inlining the child.
+
+Using these two steps, a succession of inlining operations
+can reduce any indirect recursion to a direct recursion.
+The reason is due to the visibility constraint on calls:
+any function may call its children, itself or any sibling,
+its parent, or any function its parent may call.
+
+Although ancestoral calls cannot be directly eliminated by
+inlining, there must be a call from the candidate functions
+parent to it, or one of its siblings, leading to the inlining
+of the candidate and moving it towards the root. 
+
+\section{List Examples}
+We shall begin with some basic routines on lists.
+We will first write the "obvious" routines to use as specifications.
+Later we will have to look at their performance.
+
+\subsection{Reversing a list}
+To reverse a list, we run down the list constructing a new
+one. At the end, we return the result. 
+
+Our routine takes two arguments,
+a list \verb%inp% and a list \verb%out% onto which we must prepend
+the reversed copy of \verb%inp%.
+
+\begin{minted}{felix}
+fun prepend_reversed[T] (inp:list[T]) (out: list[T]) =>
+  match inp with
+  | #Empty => out
+  | Cons (head, tail) => 
+    prepend_reversed tail (Cons (head, out))
+  endmatch
+;
+\end{minted}
+
+We can use this routine to reverse a list.
+
+\begin{minted}{felix}
+fun rev[T] (a: list[T]) => prepend_reversed a Empty[T];
+\end{minted}
+
+\subsection{Join Lists}
+Now suppose we wish to prepend a list $a$ onto a list $b$.
+How would we do that? Well it's easy:
+
+\begin{minted}{felix}
+fun join[T] (a: list[T], b: list[T]) =>
+  prepend_reversed (rev a) b
+;
+\end{minted}
+
+\subsection{Map a List}
+This routine creates a new list with each
+element a function of the old value.
+
+\begin{minted}{felix}
+fun rev_map[U,T] (f:T->U) (inp:list[T]) : list[U]=>
+  match inp with
+  | #Empty => Empty[U]
+  | Cons (head, tail) => Cons (f head, rev_map f tail)
+  endmatch
+;
+
+fun map[U,T] (f:T->U) (inp:list[T]) : list[U] =>
+  rev$ rev_map f inp
+;
+\end{minted}
+
+\subsection{Left fold a List}
+Folds fold the elements of a list of $T$ into a single value
+of type $U$ by applying a function of type $U \times T \rightarrow U$.
+Lists have two folds, one starting at the top or left, and one starting
+at the bottom.
+
+\begin{minted}{felix}
+fun fold_left[U,T] (f:U -> T -> U) (acc:U) (inp:list[T]) : U =>
+  match inp with
+  | #Empty => acc
+  | Cons (head, tail) => fold_left f (f acc head) tail
+  endmatch
+;
+\end{minted}
+
+Notice the order of the arguments, and see how in the second branch
+the head element is folded into the accummulator to form an argument
+for the recursive call.
+
+\subsection{Right fold a List}
+Here is the right fold:
+
+\begin{minted}{felix}
+fun fold_right[U,T] (f:T -> U -> U) (inp:list[T]) (acc:U): U =>
+  match inp with
+  | #Empty => acc
+  | Cons (head, tail) => f (fold_right f acc tail) head
+  endmatch
+;
+\end{minted}
+
+Notice again the order of the arguments and see how
+in the second branch the recursion produces an argument
+for the function f.
+
+\subsection{Concatenate List of Lists}
+Using our fold we can concatenate a list of lists into a single list.
+
+\begin{minted}{felix}
+fun cat[T] (x:list[list[T]]):list[T] =>
+  match x with
+  | #Empty => Empty[T]
+  | Cons(h,t) => fold_left join of (list[T]) h t
+  endmatch
+;
+\end{minted}
+
+\subsection{Filter}
+Filter selects all the elements of a list satisfying a predicate.
+
+\begin{minted}{felix}
+fun filter[T] (P:T -> bool) (x:list[T]) : list[T] =>
+  match inp with
+  | #Empty => Empty[T]
+  | Cons(h,t) =>
+    if P(h) then Cons(h, filter P t)
+    else filter P t
+  endmatch
+;
+\end{minted}
+
+\subsection{Prefix and Suffix}
+For a list $l$ of length $n$, \verb%take% $k$ $l$
+returns the head sublist of length $min(n,k)$.
+
+\begin{minted}{felix}
+fun take[T] (k:int) (lst:list[T]) : list[T] =>
+  if k <= 0 then Empty[T]
+  else
+    match lst with
+      | #Empty => Empty[T]
+      | Cons(x,xs) => Cons(x, take[T] (k - 1) xs)
+    endmatch
+  endif
+;
+\end{minted}
+
+For a list $l$ of length $n$, \verb%drop% $k$ $l$ returns
+the list with first $min(n,k)$ elements removed.
+
+\begin{minted}{felix}
+  fun drop[T] (k:int) (lst:list[T]) : list[T] =>
+    if k <= 0 then lst
+    else
+      match lst with
+        | #Empty => list[T] ()
+        | Cons(x,xs) => drop (k - 1) xs
+    endif
+  ;
+\end{minted} 
+
+\section{Tail Recursion}
+\subsection{Tail Calls}
+
+A final value returned by a function is said to be in
+{\em tail position}. 
+
+If an expression in tail position is an application,
+it is known as a {\em tail call}. 
+In expanded form, in this function for example:
+
+\begin{minted}{felix}
+fun f(x:int) = {
+  var a = x + y;
+  return g ( h (a + 1));
+}
+\end{minted}
+
+The tail call is to $g$, the functional part of the return
+expression's application. Not all returns have a tail call,
+in this example:
+
+\begin{minted}{felix}
+fun f(x:int) = {
+  var a = x + 1;
+  var b = g ( h (a + 1));
+  return b;
+}
+\end{minted}
+
+a variable is returned. This function can be rewritten
+without changing the semantics to the previous one,
+showing that whether a call is in tail position is
+a syntactic property. It is also language dependent.
+For example in Felix:
+
+\begin{minted}{felix}
+fun f (c:bool) = {
+  return
+     if c then f 1 else g 1 endif
+  ;
+}
+\end{minted}
+
+the calls to $f$ and $g$ are in tail position
+by specification. Similarly, in
+
+\begin{minted}{felix}
+fun f (c:bool)  = {
+  return
+     match c with
+     | false => f 1 
+     | true => g 1 
+     endmatch
+  ;
+}
+\end{minted}
+
+the calls to $f$ and $g$ are in tail position. However consider
+this function:
+
+\begin{minted}{felix}
+fun ifthenelse (c:bool, a:int, b:int) = {
+  return
+     match c with
+     | false => a
+     | true => b
+     endmatch
+  ;
+}
+\end{minted}
+
+then in this function:
+
+\begin{minted}{felix}
+fun f (c:bool) = {
+  return
+     ifthenelse (c, f 1, g 1)
+  ;
+}
+\end{minted}
+
+it is the call to \verb%ifthenelse% which is in tail position.
+
+\subsection{Tail Call Optimisation}
+Tail calls are important because they lead to an optimisation.
+If we save the current function's return addres on the stack
+and jump to the tail function, on completion that function will jump 
+to the return address, popping it off the stack, and then the
+current function will jump to its return address popping it off
+the stack. It is more efficient to just jump to the tail function
+without saving the return address, so that when it returns by
+popping the return address off the stack and jumping to it,
+it is returning from itself and the caller.
+
+\subsection{Tail Recursion}
+If the tail call is to
+the function itself, the function is said, somewhat ambiguously,
+to be {\em tail recursive}. The ambiguity is seen here in Ackerman's 
+famous function:
+
+\begin{minted}{felix}
+fun ack(x:int,y:int):int =>
+  if x == 0 then y + 1
+  elif y == 0 then ack(x - 1, 1)
+  else ack(x - 1, ack(x, y - 1))
+  endif
+;
+\end{minted}
+
+Here there are recursive calls, two in tail position and one not.
+
+Tail recursive calls may lead to another improvement. 
+Instead of pushing the argument onto the stack, we can just assign the
+argument to our parameter. This is safe because the parameter
+is not accessed after the call returns, since it is a tail call.
+This means the recursion can be performed as a loop using a mutable
+variable as the parameter.  If a function calls itself, and all calls
+are in tail position, the function is said to be {\em tail recursive}.
+
+For example this function is tail recursive:
+
+\begin{minted}{felix}
+fun f (x:int, n:int) = {
+  if n <= 0 return x;
+  return f (x * n, n - 1);
+}
+\end{minted}
+
+and can be optimised to:
+
+\begin{minted}{felix}
+fun f (var x:int, var n:int) = {
+again:
+  if n <= 0 return x;
+  n, x = x * n, n - 1;
+  goto again;
+}
+\end{minted}
+
+eliminating the recursion entirely. Note carefully the parallel
+assignment to the parameter components, it is equivalent to
+
+\begin{minted}{felix}
+  var tmp1 = x * n;
+  var tmp2 = n - 1;
+  n = tmp1;
+  x = tmp2;
+\end{minted}
+
+\subsection{Refactoring for tail recursion}
+Let us observe again our routine \verb%prepend_reversed%:
+
+\begin{minted}{felix}
+fun prepend_reversed[T] (inp:list[T]) (out: list[T]) =>
+  match inp with
+  | #Empty => out
+  | Cons (head, tail) => 
+    prepend_reversed tail (Cons (head, out))
+  endmatch
+;
+\end{minted}
+
+This routine is tail recursive, since the recursive call
+is in tail position. However consider our \verb%rev_map% routine:
+
+\begin{minted}{felix}
+fun rev_map[U,T] (f:T->U) (inp:list[T]) : list[U]=>
+  match inp with
+  | #Empty => Empty[U]
+  | Cons (head, tail) => Cons (f head, rev_map f tail)
+  endmatch
+;
+\end{minted}
+
+Clearly this is not tail recursive because the recursive call to
+\verb%rev_map% is not in tail position. Can we recode this
+routine to make it tail recursive? The answer is yes:
+
+\begin{minted}{felix}
+fun trrmap[U,T] 
+  (f:T->U) 
+  (inp:list[T]) 
+  (out:list[U])
+: list[U] =>
+  match inp with
+  | #Empty => out
+  | Cons (head, tail) => trmap tail (Cons ((f head ), out))
+  endmatch
+;
+
+fun rev_map[U,T] (f:T->U) (inp:list[T]) =>
+  trrmap f inp Empty[U]
+;
+\end{minted}
+
+Clearly now, the recursive call to \verb%trrmap% is
+in tail position. The trick used here is very common:
+we add an extra parameter to the routine to hold the temporary
+result.
+
+Examine again the \verb%fold_left% routine, the recursion occurs
+on the branch:
+
+\begin{minted}{felix}
+  | Cons(h,t) => fold_left join of (list[T]) h t
+\end{minted}
+
+and is clearly in tail position. However, this is not
+the case for the \verb%fold_right% routine:
+
+\begin{minted}{felix}
+  | Cons (head, tail) => f (fold_right f acc tail) head
+\end{minted}
+
+Can we fix it? The answer is yes, technically.
+Consider
+
+\begin{minted}{felix}
+fun fold_right[U,T] 
+  (f:T -> U -> U) 
+  (inp:list[T]) 
+  (acc:U)
+: U  =>
+  let fun f' (acc:U) (elt:T) => f elt acc in
+  fold_left f' acc (rev list)
+;
+\end{minted}
+
+Although this routine is not even recursive, it is
+calling a two tail recursive routines: \verb%fold_left%
+and \verb%rev%.
+
+The question we must ask here is whether this recoding
+is worthwhile. Although only a constant amount of
+machine stack is required for saving return addresses
+and passing parameters, we have had to make a temporary
+reversed list on the heap, costing an amount of time
+and space proportional to the list length.
+
+On the other hand the non-tail recursive routine only requires
+a single stack of pairs consisting of a return address
+and pointer to a list node: we also need to save the
+accumlator of course, however it can be a single variable.
+Whether or not the underlying compilation engine actually
+uses a single variable for the result is probably architecture
+and type dependent: clearly if the fold result is an integer
+a machine register might be used. 
+
+In any case it simply isn't clear whether the tail recursive
+formulation is faster or slower, and even a naive measurement
+may be difficult since in a garbage collected language the
+freeing of the list may be delayed, making a measurement 
+problematic. In Felix for example, a microtest may fail
+because by default Felix does not clean up memory on 
+program termination.
+
+Indeed, we must emphasize now that this doubt about
+the performance of programs encoded largely using
+functional programming techniques is one of the major
+negative aspects of those techniques. In general with
+any modern compiler and modern processor performance
+is not only hard to predict, it is also quite hard to
+measure, but with functional programming the situation
+is even more difficult.
+
+Functional programming does offer an advantage for certain
+classes of problems where the functional style make it
+easier to reason about the correctness of the encoding.
+This is primarily due to a property known as 
+{\em referential transparency}, however that property is only
+possessed by encodings which use recursion and immutable
+values in place of mutable variables. The price is a loss
+of ability to reason about performance.
+
+I personally think it is also arguable whether functional
+code is easier to reason about in practice, rather than
+academic papers. Indeed, the applicative functional model based on
+lambda calculus has serious issues in respect of evaluation
+strategy. We will say more about this later.
+
+In this sense Felix excels because it also permits
+procedural programming. Although fraught with difficulties
+mixing functional and imperatives styles can provide
+a more balanced program in the sense that the difficulty
+of reasoning about correctness of imperative code
+can be balanced with greater confidence in its good
+performance, where it matters.
+
+
+\section{Generalised Folds: Catamorphisms}
+Unsurprisingly, folds can be mechanically written
+for many data types. A more precise formulation in
+category theory can be given, and is explained by
+the notion of a
+\href{https://en.wikipedia.org/wiki/Catamorphism}{catamorphism}.
+We will come back to this later.
+
+Let us develop a tree fold. Our tree is binary and carries
+data at each node: both leaf and branch nodes:
+
+\begin{minted}{felix}
+union tree[T] =
+  | Leaf of T
+  | Branch of T * tree[T] * tree[T]
+;
+
+fun fun fold[R,V]
+  (binop: R * V -> R)
+  (init: R)
+  (tr: tree[V])
+=>
+  match tr with
+  | Leaf v => binop (init, v)
+  | Branch (v, l, r) =>
+    let left = fold binop init l in
+    let right = fold binop left r in
+    binop (right, v)
+;
+\end{minted}
+
+Note this formulation isn't tail recursive: it's not possible
+to visit tree nodes without remembering where you're up to.
+
+\section{Maps}
+Actually maps are easier than folds! A map function simply
+copies the structure of its argument, applying a unary operator
+to each element. Here is a list map:
+
+\begin{minted}{felix}
+fun map[R,V] (f: V -> R) (lst: list[V]) : list[R] =>
+  match lst with
+  | #Empty => Empty[R]
+  | Cons (head, tail) => Cons (f head, map f tail)
+  endmatch
+;
+\end{minted}
+
+You will note this implementation is not tail recursive!
+We will leave it as an exercise for the reader to 
+develop a tail recursive formulation.
+
+Now we will do a tree map:
+
+\begin{minted}{felix}
+fun map[R,V] (f: V -> R) (tr: tree[V]) : tree[R] =>
+  match tr with
+  | Leaf v => Leaf (f v)
+  | Branch (v, l, r) => Branch (f v, map f l, map f r)
+  endmatch
+;
+\end{minted}
+
+As you can guess, writing maps is rather boring.
+This is because a map produces an exact copy of the
+original data structure with only the data type changed.
+An operation which {\em preserves structure} has a technical
+name: it is called a \href{https://en.wikipedia.org/wiki/Functor}{functor}.
+
+We will provide a way to encode maps in a type class now,
+but before we can do this we need to observe a technical detail!
+
+Although our list and tree are considered in the abstract as
+data functors, in fact they are type schema, or indexed types.
+They're not actually functors. So to make them functors we
+will have to do this:
+
+\begin{minted}{felix}
+typedef list_f = fun (T:TYPE): TYPE => list[T];
+typedef tree_f = fun (T:TYPE): TYPE => tree[T];
+\end{minted}
+
+This is our first example of {\em higher kinded programming}
+which is sometimes loosely called meta-programming.
+The functions we have shown takes a type and produces another type.
+For example:
+
+\begin{minted}{felix}
+typedef intlist = list_f int;
+\end{minted}
+
+Note that \verb%list_f% is not yet a true functor. It is a 
+map from types to types which is the object part of a functor
+definition. The collection of types forms a category
+which is named \verb%TYPE% in Felix.
+
+Now we can rewrite our maps like this:
+
+\begin{minted}{felix}
+class Functor[F:TYPE->TYPE]
+{
+  virtual fun fmap[V,R]: (V->R) -> (F V -> F R);
+}
+
+instance Functor[list_f]
+{
+  fun fmap[V,R] (f:V->T) (lst: list_f V) : list_f R=>
+    match lst with
+    | #Empty => Empty[R]
+    | Cons (head, tail) => Cons (f head, fmap f tail)
+    endmatch
+  ;
+}
+
+instance Functor[tree_f] 
+{
+  fun fmap[V,R] (f: V -> R) (tr: tree[V]) : tree[R] =>
+    match lst with
+    | Leaf v => Leaf (f v)
+    | Branch (v, l, r) => Branch (f v, fmap f l, fmap f r)
+    endmatch
+  ;
+}
+\end{minted}
+
+The pair consisting of the type mapping \verb%list_f% and an associate
+function mapping \verb%Functor[list_f]::fmap% are a functor, because
+the two constraints are satisfied. First, its obvious that for any
+type $T$, an identity map: 
+
+\begin{minted}{felix}
+fun id[T](x:T) => x;
+\end{minted}
+
+is taken to the function
+
+\begin{minted}{felix}
+Functor[list_f]::fmap id
+\end{minted}
+
+This just makes a copy of the list. Secondly, given any two function
+
+\begin{minted}{felix}
+fun f[A,B]: A -> B;
+fun g[B,C]: B -> C;
+\end{minted}
+
+then:
+
+\begin{minted}{felix}
+(Functor[list_f]::fmap g) \circ (Functor[list_f]::fmap f)
+\end{minted}
+
+has the same semantics as:
+
+\begin{minted}{felix}
+Functor[list_f]::fmap (g \circ f)
+\end{minted}
+
+In other words, mapping a list using $f$ and then mapping it
+again using $g$ produces the same final result as mapping
+it by the composite function $g \circ f$ in one go. This requirement
+is more than just a rule, however. Its a crucial optimisation
+called \href{https://en.wikipedia.org/wiki/Deforestation_%28computer_science%29}{deforestation} 
+or {\em fusion}. Although not always the case, applying the composite function
+once to each element to build a new list is probably faster than
+building a temporary list, building another from it, and the deleteing
+the temporary list.
+
+Such semantic rules for functors are important enough to encode
+them in the type class:
+
+\begin{minted}{felix}
+class Functor[F:TYPE->TYPE]
+{
+  virtual fun fmap[V,R]: (V->R) -> (F V -> F R);
+
+  axiom identity_preserving[A, B with Eq[A]] (f:A->B) (id:A->A) (x:A):
+    id x == x implies fmap id (f x) == fmap f x
+  ;
+
+  reduce structure_preserving[A,B,C] (f:A->B, g:B->C):
+    (fmap g) \circ (fmap f) =>
+    fmap (g \circ f)
+  ;
+}
+\end{minted}
+
+The identity rules is a bit tricky, it says that for every
+function $f: A \rightarrow B$ and function $id: A\rightarrow A$
+for which for all $x \in A$ we have $f x = x$, then the fmap
+of the $id$ function applied to the value $f$ maps $x$ to
+is the same as the value that the $fmap$ of function $f$ gives.
+We need this long winded exposition because we cannot directly
+assert that two functions are equal.
+
+The current version of Felix can check the axioms against test data,
+however it cannot mechanically implement the reduction rule to
+effect an optimisation.
+
+\part{Procedural Programming}
+\chapter{Procedural Basics}
+In Felix, procedures are subroutines which return control
+but no value, they should have side effects, directly or indirectly.
+
+\begin{minted}{felix}
+proc hello() 
+{
+   println "Hello";
+}
+
+proc sayit (s:string)
+{
+  println$ "Say " + s;
+}
+hello;
+sayit "Hello";
+\end{minted}
+
+The type of a procedure is written \verb%T -> 0% where $T$ is the type
+of the argument. The zero indicates no value is returned, it is an alias
+for \verb%void%.
+
+\section{Variables and Pointers}
+The core concept of procedural programming revolves not around
+observable behaviour, but the use of non-observable storage
+locations called variables which can be modified to contain
+time dependent values.
+
+There is therefore an intrinsic relation between control flow and
+the state of a program's variables, and this relation is the
+heart of procedural programming.
+
+In Felix, functional programming involves values, whilst procedural
+programming involves variables as well. The relation between the
+two is explicit: values are immutable, so functional code ignoring
+variables is pure. On the other hand, a variable is a symbolic
+name for the address of an object, which is a contiguous region
+of store.
+
+In principle, in Felix, assignment is effected by a store operator:
+
+\begin{minted}{felix}
+var x = 1; // a variable
+var px = &x; // the variable address
+px <- 42; // the store-at mutator
+\end{minted}
+
+Variables are addressable, which means a pointer to the variable
+can be obtained. There is no assignment, rather a procedure
+is used to store a value at an address.
+
+At first glance the philosophical model has no semantic
+impact, however we will show that the model is very powerful.
+In particular, in a functional setting, a value of a product
+type is characterised by projections.
+
+Consider now:
+
+\begin{minted}{felix}
+val x = (a=1, b=2); // record value
+val bv = x . b; // b is the projection
+var y = x; // put value in variable!
+val px = &y; // address of object
+val pa = px . a; // address of a subobject
+pa <- 42; 
+&y . a <- 42; // equivalent by substitution
+y . a = 42; // equivalent by sugar
+\end{minted}
+
+What is important here is that all product projections from product type $P$
+to component type $C$, having type $P -> C$, are overloaded so that there
+is also a projection with the same name of type $\&P -> \&C$.
+
+In paricular note that you cannot "take the address" of a subcomponent
+of a value stored in a variable! In fact, the \verb%&% is not an operator at all.
+Rather the spelling \verb%&y% is the true name of the variable, and the plain
+usage like \verb%y% is really sugar for \verb%*&y%, that is, it is really
+an auto-dereference of the pointer associated with the variables type and
+storage address.
+
+Felix allows construction of objects on the heap and locally: heap allocations
+return a pointer directly. Local objects, represented by a variable, can
+be silently replaced by heap objects and vice versa.
+
+The most noteworthy example of the utility of the concept is the
+way Felix handles arrays.
+
+\begin{minted}{felix}
+// a tuple of elements, all the same type, is an array
+var x = 1,2,3,4; 
+
+for i in 0..<4 do
+  &x . i <- x . i + 1;
+done
+\end{minted}
+
+Here the projection is denoted by an expression, not merely
+a constant. Felix array values are immutable, however you can
+modify an array object as shown.
+\chapter{Iterators}
+Stuff.
+\chapter{Dynamic Objects}
+Stuff.
+\chapter{Reactive Programming}
+Stuff.
+
+\part{Active Programming}
+\chapter{Fibres}
+Felix provides synchronous (cooperative) multi-tasking by way of {\em fibres}
+or {\em f-threads}. The procedure to launch a fibre is 
+
+\begin{minted}{felix}
+  spawn_fthread: 1 -> 0
+\end{minted}
+
+For example you can do this:
+
+\begin{minted}{felix}
+spawn_fthread { println$ "Hello World"; };
+println$ "Fibre spawned";
+\end{minted}
+
+However the following may not do what you first expect:
+
+\begin{minted}{felix}
+var fts = varray[1->0] 4uz;
+for var i in 0 upto 3 do
+  push_back (fts, { println$ i; });
+done
+for j in 0 upto 3 do
+  spawn_fthread fts.j;
+done
+\end{minted}
+
+This is because Felix captures variables by address not value.
+So it will print "3" 4 times, because that is the value of 
+variable $i$ at the time the fibre runs.
+
+To actually capture the current value do this instead:
+
+\begin{minted}{felix}
+var fts = varray[1->0] ();
+noinline proc pi (var k:int) () { println$ k; }
+for var i in 0 upto 3 do
+  push_back (fts, pi i);
+done
+for var j in 0 upto 3 do
+  spawn_fthread fts.j;
+done
+\end{minted}
+
+The \verb%noinline% is essential. Remember the notation is a short
+hand for
+
+\begin{minted}{felix}
+fun pi (var k:int) = { 
+  proc aux () { println$ k; }
+  return aux;
+}
+\end{minted}
+
+The function \verb%pi% will return the procedure \verb%aux% however
+if it is inlined so that parameter $k$ is replaced by $i$, then aux will
+print $i$ in every instance: this is lazy evaluation. Using \verb%noinline%
+ensures a closure is formed in the loop with k assigned to the current
+value of $i$. Then \verb%aux% refers to the variable $k$ which is different
+for every instance of the closure.
+
+Another solution is to use recursion:
+
+\begin{minted}{felix}
+var fts = varray[1->0] 4uz;
+proc spawnem (var i:int) {
+  push_back (fts, {println$ i; } );
+  if i < 3 call spawnem (i+1);
+}
+spawnem 0;
+for var j in 0 upto 3 do
+  spawn_fthread fts.j;
+done
+\end{minted}
+
+Even though this is clearly a case of tail recursion, Felix does
+{\em not} perform the tail recursion optimisation. The compiler
+knows there is a reference to the procedure frame which escapes
+the call's lifetime so the frame must be preserved and not reused.
+
+\chapter{Synchronous Channels}
+Fthreads are designed to cooperate by using synchronous channels or {\em schannels}.
+
+\chapter{Pipelines}
+Stuff.
+\chapter{Coroutines}
+Stuff.
+\chapter{Continuations}
+Stuff.
+\chapter{Symmetric Lambda Calculus}
+Stuff.
+
+\part{Concurrency}
+\chapter{Asynchronous Events}
+Stuff.
+\section{Timers}
+Stuff.
+\section{Socket I/O}
+Stuff.
+
+\chapter{Pre-emption}
+Stuff.
+\section{Pthreads}
+Stuff.
+\subsection{Designing a Thread Pool}
+Let us suppose we wish to divide the task of multiplying
+a matrix up into 4 pieces, so one thread calculates
+a quarter of the result. One important property of this 
+division is that the parts are entirely independent.
+
+A pool of threads is useful to solve problems which can
+be split into such pieces.
+
+\begin{minted}{felix}
+interface thread_pool_t
+{
+  stop : 1 -> 0;
+  schedule: 1 -> 0;
+}
+
+object thread_pool (maxthreads: int) 
+  implements thread_pool_t =
+{
+  union Action = | Run of 1->0 | Stop;
+  var ictrl, octrl = #mk_pchannel_pair[Action];
+  var maxthreads = 4;
+
+  proc pool_thread ()
+  {
+  next:>
+    var cmd : Action = read ctrl_chan;
+    match cmd with
+    | Run p -> p(); goto next;
+    | Stop -> ;
+    endmatch;
+  }
+
+  proc start() =>
+    for i in 0..<maxthreads
+      call spawn_pthread pool_thread;
+
+  method proc stop() =>
+    for i in 0..<maxthreads
+      call write(octrl, Stop);
+
+  method proc schedule (job: 1 -> 0) =>
+     write (octrl, Run job);
+
+  start;
+}
+var pool = thread_pool 4;
+\end{minted}
+
+It is important to know that Felix pthreads are detached,
+they have no identity and can't be joined. This is the correct
+way to do threads! The single pchannel used here is a perfect
+mechanism for synchronisation. All the pthreads try to fetch
+the next job. The first one will block waiting for a job to
+be sent on the channel. The second one will block waiting
+for the first one. On the other hand the master thread sheduling
+the jobs will block until a job being scheduled is dispatched
+to some pool thread.
+
+The pool is assigned to a global variable and starts automatically
+if it is used. If it is not use the Felix compiler will optimise
+away the variable and the pool will not start.
+
+The stop method must be called exactly once to bring down the threads
+otherwise the Felix program cannot terminate.
+
+You may wonder, how can we find out if scheduled jobs are 
+completed? Here is a correct answer:
+
+\begin{minted}{felix}
+interface job_t (p:1->0) 
+{
+   wait: 1 -> 0;
+}
+
+object job (p:1->0) implements job_t =
+{
+  union job_status_t = Finished;
+  var istatus, ostatus = #mk_iopchannel_pair[job_status_t];
+
+  proc job (p: 1-> 0) =>
+    { p; spawn_pthread { write(ostatus, Finished); }; };
+
+  proc start(p:1->0) =>
+     pool.schedule (job p);
+
+  method proc wait () =>
+    match read istatus with
+    | #Finished => ;
+    endmatch;
+
+  start p;
+} 
+\end{minted}
+
+Note carefully that the completion notification is issued
+by a spawned secondary thread! If the pool job were to 
+issue the notification, the pool would block up until
+the completion status was acknowledged. There must be a better
+way! And there is: atomics, discussed next. However we must
+first note carefully the core of the issue: pchannels are
+synchronisation vehicles. A data transmission guarrantees
+one reader and writer will block until the exchange
+is complete. 
+
+It is crucial to understand deeply that
+every thread runs its own private clock,
+and there is by default {\bf no correlation at all
+between the private clocks of threads}. In particular
+this means it is nonsense to even speak of an event on
+one thread occuring before or after an event on another
+unless the clocks are synchronised. The only assurance
+one has is that each thread has a monotonic increasing
+clock.
+
+So perhaps you are temped to say, "Well if E1 occurs in
+thread P1, and then E2 occurs, then if X1 occurs in 
+thread P2, then if X1 is before E1, it is also before
+E2".
+
+This is utter nonsense: you are assuming some central
+global clock. There is no such clock. There is no fault
+in the deduction made in the above statement, the statement
+is not well formed in the first place because it tries
+to make the conclusion based on the assumption an event
+in one thread must occur before or after an event in another.
+This is nonsense. The only shared concept of time is one
+based on synchronisation events. Such an event locks the
+clocks together, that is, it creates an association between
+two events which then allows one to use the private monotonicity
+to make an ordering argument about subsequent and previous events.
+
+For example in P1 if A occurs before synchronisation event Y,
+and if in P2, B occurs after synchronisation event Y, then
+one may deduce A occurs before B.
+
+Note that spawning a thread does NOT create a synchronisation
+event! The spawned thread may never start, meaning it may not
+start until the spawner has terminated. Or it may start
+and complete, before the spawn command itself completes.
+
+Pchannel I/O operations are heavyweight synchronisation events:
+they guarrantee clocks are in agreement for both parties
+of the exchange.
+
+\subsection{Atomics}
+Atomic variables provide lightweight synchronisation events.
+This means they only guaranetee synchronisation of one of the
+two participating parties clocks.
+
+Let us supposed an atomic flag is clear, and thread P1 sets it.
+Thread P2 will do some work and then wait until the flag is set
+before proceeding. 
+
+What is known? Thread P2 knows that all the events of 
+thread P1 that had to be complete before the flag is set
+are complete, so it knows all of these events are before
+any events of its own that follow the retrieval of a set flag.
+However thread P1 knows nothing about thread P1.
+
+\subsection{Locks}
+A {\em mutual exclusion lock} or {\em mutex} for short,
+is a mechanism by which a thread may perform a sequence of
+memory reads and writes such that any other thread using
+the same lock and respecting the locking protocol,
+is excluded from access to the store being accessed,
+so that the other thread will either see none, or all,
+of the writes performed.
+
+The protocol usually consists of a thread setting the lock,
+performing some memory operations which should be regarded
+as atomic, and then releasing the lock.
+
+Technically, there are no ordering constraints on other
+regions of memory than those protected by the lock.
+Unfortunately, most mutex do not permit specification
+of the region to be protected, therefore, the whole of
+memory is protected. This means after the lock is released
+all other threads will observe all writes previously
+performed by the locking thread.
+
+\begin{minted}{felix}
+var share1 = 0;
+var share2 = 0;
+var m = #mutex;
+
+var clock = #Faio::mk_alarm_clock;
+
+proc writer () => 
+  for i in 0..<10 do
+     m.lock;
+     ++share1;
+     ++share2;
+     m.release;
+     sleep(clock, 1.0);
+  done
+;
+
+proc reader() =>
+  while true do
+     m.lock;
+     var r1 = share1;
+     var r = share1 + 256 * share2;
+     m.release;
+     println$ r;
+     if r1 >= 10 break;
+  done
+;
+
+spawn_pthread writer;
+spawn_pthread writer;
+spawn_pthread reader;
+\end{minted}
+
+In this simple example it is implicit that \verb%share1% and \verb%share2%
+are protected by the mutex \verb%m%. The lock-access/modify-release protocol
+use by all threads ensures access and modification is serialised so
+that the reader thread cannot see \verb%share1% and \verb%share2% except
+when they're equal. The value of these variables is indeterminate outside
+of the dynamic scope of the lock-release events.
+
+\subsection{Barriers}
+Stuff.
+\subsection{Concurrently Statement}
+
+\chapter{Parallelism}
+Stuff.
+\section{Thread Pool}
+Stuff.
+\section{Parallel For Loop}
+Stuff.
+
+\part{Categorical Programming}
+\chapter{Category Theory}
+Stuff.
+\chapter{Symmetric Categorical Language}
+Stuff.
+\chapter{Meta-programming}
+Stuff.
+\chapter{Polyadicity: The Holy Grail}
+Stuff.
+
+\appendix
+\backmatter
+\end{document}

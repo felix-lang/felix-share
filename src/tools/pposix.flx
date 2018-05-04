@@ -1,0 +1,244 @@
+open Regdef;
+regdef spce = " ";
+
+regdef eol = "\n";
+regdef white = spce | eol;
+regdef not_eol = perl ( "." );
+regdef optnoteol = not_eol*;
+regdef ccomment = "//" optnoteol eol;
+regdef ws = white+;
+regdef endline = ws? ccomment | white*;
+
+regdef upper = perl("[[:upper:]]");
+regdef lower = perl("[[:lower:]]");
+regdef digit = perl ("[[:digit:]]");
+regdef letter = upper | lower;
+regdef alnum = letter | digit;
+regdef us = "_";
+regdef cid = (letter | us) (alnum | us)*;
+
+regdef open_option = "[Option Start]";
+regdef start_option = "[" group(cid ((ws cid)|("|" cid))*) "]" ws? open_option;
+regdef end_option = "[Option End]";
+
+regdef filename = cid ("/" cid)* ".h"?;
+regdef head = "#include" ws "<" filename ">";
+
+regdef legacy = "(LEGACY)";
+regdef return_type = cid (ws cid | ws? "*")* (ws|ws? "*");
+regdef arglist = (ws | cid | "*" | "..." | "(" | ")" | "," | "[" (digit+|"restrict")? "]")*;
+regdef fundef = group(return_type) group(cid) ws? "(" group(ws? arglist) ")" ";" group((ws legacy)?); 
+regdef entry =ws? ( 
+   group(head) | 
+   start_option | 
+   group(end_option) |  
+   group(ccomment) | 
+   group(fundef) 
+  ) ws?
+;
+
+fun pack(s:string) = {
+  var bits = split(s,' \n\r');
+  var bits2 = filter (fun (s:string)=> s!="") bits;
+  var bits3 = cat " " bits2;
+  return bits3;
+}
+
+
+regdef xx = entry;
+//println$ xx.render;
+
+var lentry = RE2(xx.render);
+var stuff = load ("misc/posix.txt");
+//print stuff;
+
+var n = lentry.NumberOfCapturingGroups;
+//println$ "Number of groups = " + str n;
+var spos = 0;
+var fun_option_code="";
+var file_option_code="";
+var option_code = "";
+var just_set = false;
+
+var replist = list (
+  ("gid_t []","&gid_t"),
+
+  ("int(*)(ntbs, &struct_stat, int)","(ntbs * &struct_stat * int --> int)"),
+  ("int(*)(ntbs, &struct_stat, int, struct_FTW*)","(ntbs * &struct_stat * int * &struct_FTW --> int)"),
+  ("int(*)(address, address)","(address * address --> int)"),
+
+  ("ushort[7]","&ushort"),
+  ("ushort[3]","&ushort"),
+  ("char[64]","&char"),
+
+  ("long long", "vlong"),
+  ("uint32_t", "uint32"),
+  ("short*","&short"),
+  ("unsigned", "uint"),
+  ("uint*","&uint"),
+  ("int*","&int")
+);
+
+var types = Empty[string];
+var igntypes = list(
+  "...","[]","*","-->","",
+  "char","ntbs","void",
+  "short","int","long","vlong",
+  "ushort","uint","ulong","uvlong",
+  "float","double","ldouble",
+  "fcomplex","dcomplex","lcomplex",
+  "uint32",
+  "size","ssize","wchar","va_list"
+);
+
+next:while true do
+  //println$ "Start pos=" +  spos.str + "=" + stuff.[spos to spos + 10];
+  var result = varray[StringPiece] (n.size + 1, StringPiece "");
+  val m = Match(lentry,stuff.StringPiece, spos, ANCHOR_START,result.carray,n + 1);
+  not m ?? break next;
+  //println$ "Match = " + str m;
+  //println$ result;
+  if result.[1].len != 0uz do
+    if not just_set do 
+      file_option_code=""; 
+    else 
+      file_option_code = fun_option_code;
+      fun_option_code = "";
+    done
+    println$ "// Include file=" + result.[1].str + if option_code!="" then " //["+file_option_code+"]" else "" endif;
+  elif result.[2].len != 0uz do
+    fun_option_code=result.[2].str;
+    just_set=true;
+  elif result.[3].len != 0uz do
+    if just_set do
+      file_option_code = "";
+    else
+       fun_option_code="";
+    done
+    just_set=false;
+  elif result.[4].len != 0uz do
+    println$ result.[4].str;
+  elif result.[5].len != 0uz do
+    just_set=false;
+    //println$ "function=" + result.[5].str;
+    option_code = (file_option_code + " " + fun_option_code).pack;
+    var name=result.[7].str;
+    var ret=result.[6].str.pack;
+    var args=result.[8].str;
+    var legaci=result.[9].str;
+    var trail = 
+      if option_code != "" or legaci !="" 
+      then " //" + 
+        if option_code!="" 
+        then "["+option_code+"]" 
+        else "" 
+        endif
+        +legaci
+      else ""
+      endif
+    ;
+    args= args.pack;
+    ret= ret.pack;
+    args = search_and_replace(args, "const ","");
+    args = search_and_replace(args, "restrict","");
+
+  var replist2 = list (
+      ("struct ","struct_"),
+
+      // floats
+      ("long double complex", "dcomplex"),
+      ("double complex", "complex"),
+      ("float complex", "fcomplex"),
+      ("long double", "ldouble"),
+
+      // ints
+      ("unsigned long long", "uvlong"),
+      ("unsigned long", "ulong"),
+      ("unsigned int", "uint"),
+      ("unsigned short", "ushort"),
+
+      ("long long", "vlong"),
+      ("uint32_t", "uint32"),
+      ("unsigned", "uint"),
+      ("size_t", "size"),
+      ("ssize_t", "ssize"),
+
+      // get rid of all spaces now
+      (" ",""),
+      (" ",""),
+      (" ",""),
+      (" ",""),
+
+      // convert arrays to pointers
+      ("[]","*"),
+      ("[7]","*"),
+      ("[2]","*"),
+      ("[3]","*"),
+      ("[64]","*"),
+
+      // Special Felix names
+      ("void*","address"),
+      ("char*","&ntbs"),
+
+      ("DIR*","pDIR_t"),
+      ("FILE*","pFILE_t"),
+      ("DBM*", "pDBM_t"),
+
+      // callbacks
+      ("void(*)(void)","(unit --> void)"),
+      ("void(*)(address)","(address --> void)"),
+      ("address(*)(address)","(address --> address)"),
+      ("int(*)(address)","(address --> int)"),
+      ("int(*)(address,address)","(address * address --> int)"),
+      ("void(*)(address,VISIT,int)","(address * VISIT * int --> void)")
+    );
+
+    for sr in replist2 do
+      args = search_and_replace(args, sr.0,sr.1);
+      ret = search_and_replace(ret, sr.0,sr.1);
+    done
+    // Felix pointer types
+    args = search_and_replace(args, 0uz, RE2(render (regexp (group (cid) "*"))),"&\1");
+    args = search_and_replace(args, 0uz, RE2(render (regexp (group (cid) "*"))),"&\1");
+    ret = search_and_replace(ret, 0uz, RE2(render (regexp (group (cid) "*"))),"&\1");
+    ret = search_and_replace(ret, 0uz, RE2(render (regexp (group (cid) "*"))),"&\1");
+
+    for sr in replist do
+      args = search_and_replace(args, sr.0,sr.1);
+      ret = search_and_replace(ret, sr.0,sr.1);
+    done
+    args= args.pack;
+    ret = ret.pack;
+    var arg_list = split (args, ",");
+    args = cat " * " arg_list;
+    arg_list = Cons (ret, arg_list);
+    if ret == "void" do
+      println$ "  proc " + name + ": " + args +";" + trail;
+    elif ret in ("float","double","ldouble","fcomplex","dcomplex","lcomplex") 
+    or name.[0 to 2] == "is"  
+    do
+      println$ "  fun " + name + ": " + args + " -> " + ret ";" + trail;
+    else
+      println$ "  gen " + name + ": " + args + " -> " + ret ";" + trail;
+    done
+    for argx in arg_list do
+      var arg = argx.strip;
+      if arg.[0] == "&".char do arg = arg.[1 to]; done
+      if arg.[0] == "&".char do arg = arg.[1 to]; done
+      if not (arg in igntypes  or arg in types) do
+        types = Cons(arg, types);
+      done
+    done
+  done
+
+  spos += result.[0].len.int;
+done
+
+println$ "/" * 20;
+types = types.sort;
+for t in types do
+   println$ "'"+t+"'";
+done
+
+println$ "Finished";
+

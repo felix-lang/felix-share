@@ -1,0 +1,14 @@
+#line 10 "/Users/skaller/felix/src/packages/time.fdoc"
+class Time_class [os] {
+  virtual gen time: 1 -> double; // time in seconds since Jan 1 1970 UTC, seconds
+}
+
+open class Time {
+if PLAT_WIN32 do
+  inherit Win32Time;
+else
+  inherit PosixTime;
+done
+  rename fun sleep =  Faio::sleep;
+}
+

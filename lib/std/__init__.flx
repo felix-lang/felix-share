@@ -1,0 +1,52 @@
+#line 28 "/Users/skaller/felix/src/packages/libstruct.fdoc"
+
+open String;
+
+// ISO C++99 standard header tags
+include "std/c/__init__";
+
+// core type classes
+include "std/algebra/__init__";
+
+// base scalar types
+include "std/scalar/__init__";
+
+// utility
+include "std/debug";
+
+// control
+include "std/control/__init__";
+include "std/pthread/__init__";
+include "std/program/__init__";
+
+//memory management
+include "std/gc";
+
+// I/O
+include "std/io/__init__";
+include "std/time";
+
+// codecs
+include "std/codec/__init__";
+
+// base data types
+include "std/datatype/__init__";
+include "std/strings/__init__";
+
+// regexes
+include "std/regex/__init__";
+
+// database REMOVED
+//include "std/db/__init__";
+
+// Version
+include "std/version";
+
+// Platform support (implementation exposure)
+include "std/osx/__init__";
+include "std/posix/__init__";
+include "std/win32/__init__";
+
+// Felix (implementation exposure)
+include "std/felix/__init__";
+

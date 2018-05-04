@@ -1,0 +1,4 @@
+#line 2336 "/Users/skaller/felix/src/packages/toolchain.fdoc"
+include "std/felix/flx/flx";
+export fun flx_plugin_setup(x:string)=>0;
+export fun flx_plugin (args:list[string]) = { return Flx::runflx (args); }

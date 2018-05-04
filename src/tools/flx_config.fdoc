@@ -1,0 +1,574 @@
+@title Configuration Tool
+@felix
+include "sdl/SDL_image";
+include "gui/__init__";
+open FlxGui;
+
+println$ "Basic Menu Test";
+
+// Initialise the SDL system (SDL + TTF + IMAGE)
+FlxGui::init();
+
+var font_name = dflt_mono_font();
+var font : font_t = get_font(font_name, 12);
+var lineskip = get_lineskip font;
+
+// Menu colours
+var text_colour = (label_colour=black, bg_colour=white,top_colour=blue,
+  left_colour=blue, bottom_colour=red,right_colour=red);
+
+var selected_colour = (label_colour=white, bg_colour=blue,top_colour=darkgrey,
+  left_colour=darkgrey, bottom_colour=lightgrey,right_colour=lightgrey);
+
+var disabled_colour = (label_colour=grey, bg_colour=white,top_colour=lightgrey,
+  left_colour=lightgrey, bottom_colour=darkgrey,right_colour=darkgrey);
+
+fun / (s:string, t:string) => Filename::join (s,t);
+
+var open_icon_file = #Config::std_config.FLX_SHARE_DIR / "src"/"web"/"images"/"minus.gif";
+var open_icon = IMG_Load (open_icon_file.cstr);
+var closed_icon_file = #Config::std_config.FLX_SHARE_DIR / "src"/"web"/"images"/"plus.gif";
+var closed_icon = IMG_Load (closed_icon_file.cstr);
+var submenu_icon = (open_icon=surface open_icon, closed_icon=surface closed_icon);
+
+proc mk_menu
+(
+  w:window_t, x:int, y:int,
+  m:menu_data_t, init: menu_state_t,
+  oresp: %>menu_action_t,
+  ievent: %<event_t
+) 
+{
+  var mm = MenuModel m;
+  var md = MenuBarDisplay ("mymenu",mm,w,x,y,font, text_colour,disabled_colour,selected_colour, submenu_icon);
+  mm.set_state init;
+  md.display();
+
+  device mio = menu_controller (mm,md);
+  circuit
+    wire ievent to mio.ec
+    wire oresp to mio.response
+  endcircuit
+}
+
+open LS_expr;
+
+fun leaf (x:menu_text_entry_t)=> Leaf[menu_entry_t,menu_entry_t] (Text x);
+fun separator () => Leaf[menu_entry_t, menu_entry_t] Separator;
+
+var osmenu = list (
+  leaf (tag="Linux", label="Linux",active=Active),
+  leaf (tag="OSX", label="OSX",active=Active),
+  leaf (tag="Solaris", label="Solaris",active=Active),
+  leaf (tag="BSD", label="Generic BSD",active=Active),
+  leaf (tag="Posix", label="Generic Posix",active=Active),
+  #separator, 
+  leaf (tag="Win32", label="Win32",active=Active),
+  leaf (tag="Win64", label="Win64",active=Active),
+  #separator, 
+  leaf (tag="Cygwin", label="Cygwin",active=Active)
+);
+
+var compilermenu = list (
+  leaf (tag="gcc", label="gcc",active=Active),
+  leaf (tag="clang", label="clang",active=Active),
+  leaf (tag="MSVC", label="msvc",active=Active)
+);
+
+var maxalignmenu = list (
+  leaf (tag="a4", label="4 bytes",active=Active),
+  leaf (tag="a8", label="8 bytes",active=Active),
+  leaf (tag="a16", label="16 bytes",active=Active),
+  leaf (tag="a32", label="32 bytes",active=Active)
+);
+
+
+var cxxstandardmenu= list (
+  leaf (tag="C++89", label="C++89",active=Active),
+  leaf (tag="C++11", label="C++11",active=Active),
+  leaf (tag="C++14", label="C++14",active=Active)
+);
+
+var socketeventnotifiermenu= list (
+  leaf (tag="select", label="select (posix)",active=Active),
+  leaf (tag="poll", label="poll (posix)",active=Active),
+  leaf (tag="epoll", label="epoll (linux)",active=Active),
+  leaf (tag="kqueue", label="kqueue (bsd,osx)",active=Active),
+  leaf (tag="windows", label="windows",active=Active),
+  leaf (tag="solaris", label="solaris",active=Active)
+);
+
+
+var cxxcapabilitiesmenu = list (
+  Tree (Text (tag="Maxalign", label="Maxalign",active=Active), maxalignmenu),
+  leaf (tag="builtin_expect", label="builtin expect",active=Active),
+  leaf (tag="computed_goto", label="computed goto",active=Active),
+  leaf (tag="assembler_labels", label="assembler_labels",active=Active),
+  leaf (tag="OpenMP", label="OpenMP",active=Active),
+  leaf (tag="socklen_t", label="socklen_t in <sys/socket.h>", active=Active)
+);
+
+var cxxlibrarymenu = list (
+  leaf (tag="vsnprintf", label="vsnprintf",active=Active),
+  leaf (tag="dlopen", label="dlopen",active=Active)
+);
+
+
+
+var menu = list (
+  Tree (Text (tag="OS", label="OS",active=Active), osmenu),
+  Tree (Text (tag="Toolchain", label="Toolchain",active=Active), compilermenu),
+  Tree (Text (tag="C++ Standard", label="C++ Standard",active=Active), cxxstandardmenu),
+  Tree (Text (tag="C++ Features", label="C++ Features",active=Active), cxxcapabilitiesmenu),
+  Tree (Text (tag="C++ Library", label="C++ Library",active=Active), cxxlibrarymenu),
+  Tree (Text (tag="SocketEventNotifier", label="SocketEventNotifier",active=Active), socketeventnotifiermenu)
+);
+
+var init_state = Open ( list[int] (4,2) );
+
+var config = (
+  OS="Posix", 
+  toolchain="gcc", 
+  sourcelang="C++89",
+  maxalign="16",
+  notifier="select",
+  have_builtin_expect= "1",
+  have_vsnprintf= "1",
+  have_dlopen= "1",
+  have_cgoto = "1",
+  have_asm_labels= "0",
+  have_openmp= "0",
+  have_socklen_t ="1"
+);
+
+typedef config_t = typeof config;
+/*
+// Base display routine
+proc display (w:window_t) (config:config_t)
+{
+  w.clear lightgrey;
+  var col = 100;
+  var v = 100;
+  w.write (col,v,font,black,"OS            : " + config.OS); v+=lineskip;
+  w.write (col,v,font,black,"toolchain     : " + config.toolchain); v+=lineskip;
+  w.write (col,v,font,black,"sourcelang    : " + config.sourcelang); v+=lineskip;
+  w.write (col,v,font,black,"max align     : " + config.maxalign); v+=lineskip;
+  w.write (col,v,font,black,"builtin expect: " + config.have_builtin_expect); v+=lineskip;
+  w.write (col,v,font,black,"vsnprintf     : " + config.have_vsnprintf); v+=lineskip;
+  w.write (col,v,font,black,"dlopen        : " + config.have_dlopen); v+=lineskip;
+  w.write (col,v,font,black,"computed goto : " + config.have_cgoto); v+=lineskip;
+  w.write (col,v,font,black,"asm labels    : " + config.have_asm_labels); v+=lineskip;
+  w.write (col,v,font,black,"openmp        : " + config.have_openmp); v+=lineskip;
+  w.write (col,v,font,black,"notifier      : " + config.notifier); v+=lineskip;
+  w.write (col,v,font,black,"socklen_t     : " + config.have_socklen_t); v+=lineskip;
+}
+
+fun mk_hash_define (mac:string, value:string) => 
+  "#define " + mac + " " + value + "\n"
+;
+fun cbool (x:bool)=> if x then "1" else "0" endif;
+
+fun mk_hash_define (mac:string, value:bool) => 
+  "#define " + mac + " " + cbool value + "\n"
+;
+
+fun mk_demux_sockety_config_h (config: config_t) =>
+f"""
+#ifndef __DEMUX_SOCKETY_CONFIG_H__
+#define __DEMUX_SOCKETY_CONFIG_H__
+#include <sys/socket.h>
+// generated by flx_config.fdoc
+
+typedef %S FLX_SOCKLEN_T;
+#endif
+""" if config.have_socklen_t == "1" then "socklen_t" else "int" endif;
+
+fun mk_flx_rtl_config_params_hpp (config:config_t) =
+{
+  var s =  "#ifndef __FLX_RTL_CONFIG_PARAMS_H__\n";
+  s += "#define __FLX_RTL_CONFIG_PARAMS_H__\n";
+  s += "\n";
+  s += "// generated by flx_config.fdoc\n";
+  s += "\n";
+
+  s += mk_hash_define ("FLX_HAVE_VSNPRINTF",config.have_vsnprintf);
+  s += mk_hash_define ("FLX_HAVE_GNU",config.toolchain in ("gcc","clang"));
+  s += mk_hash_define ("FLX_HAVE_GNU_BUILTIN_EXPECT",config.have_builtin_expect);
+  s += mk_hash_define ("FLX_HAVE_CGOTO",config.have_cgoto);
+  s += mk_hash_define ("FLX_HAVE_ASM_LABELS",config.have_asm_labels);
+  s += mk_hash_define ("FLX_HAVE_DLOPEN",config.have_dlopen);
+  s += mk_hash_define ("FLX_MACOSX",config.OS=="OSX");
+  s += mk_hash_define ("FLX_LINUX",config.OS=="Linux");
+  s += mk_hash_define ("FLX_WIN32", config.OS in ("Win32", "Win64"));
+  s += mk_hash_define ("FLX_WIN64", config.OS=="Win64");
+  s += mk_hash_define ("FLX_CYGWIN",config.OS=="Cygwin");
+  s += mk_hash_define ("FLX_POSIX",config.OS in ("Posix","Linux","OSX","Solaris"));
+  s += mk_hash_define ("FLX_SOLARIS", config.OS=="Solaris");
+  s += mk_hash_define ("FLX_HAVE_MSVC",config.toolchain=="msvc");
+  s += mk_hash_define ("FLX_HAVE_KQUEUE_DEMUXER", config.notifier=="kqueue");
+  s += mk_hash_define ("FLX_HAVE_POLL",config.notifier=="poll");
+  s += mk_hash_define ("FLX_HAVE_EPOLL",config.notifier=="epoll");
+  s += mk_hash_define ("FLX_HAVE_EVTPORTS",config.notifier=="solaris");
+  s += mk_hash_define ("FLX_HAVE_OPENMP",config.have_openmp);
+  s += mk_hash_define ("FLX_MAX_ALIGN",config.maxalign);
+
+  s += "\n";
+  s += "#endif\n";
+  return s;
+}
+
+fun mk_macro_val (name:string, value:bool) => "macro val " + name + " = " + value.str+";\n";
+
+fun mk_flx_flxh(config:config_t) =
+{
+  var s =  "// generated by flx_config.fdoc\n";
+  s += mk_macro_val ("PLAT_WIN32",config.OS in ("Win32", "Win64"));
+  s += mk_macro_val ("PLAT_POSIX",config.OS in ("Linux","OSX","BSD","Solaris"));
+  s += mk_macro_val ("PLAT_LINUX",config.OS=="Linux");
+  s += mk_macro_val ("PLAT_MACOSX",config.OS=="OSX");
+  s += mk_macro_val ("PLAT_CYGWIN",config.OS=="Cygwin");
+  s += mk_macro_val ("PLAT_SOLARIS",config.OS=="Solaris");
+  s += mk_macro_val ("PLAT_BSD",config.OS in ("BSD","OSX"));
+  s += "\n";
+  return s;
+}
+
+proc menu_mod_config (config: &config_t) (s:string) 
+{
+  proc toggle (s:&string) => s <- if *s == "0" then "1" else "0" endif; 
+
+  match s with
+  // OS
+  | "Linux" => config.OS <- s; 
+    if config*.toolchain == "MSVC" do config.toolchain <- "gcc"; done
+
+  | "OSX" => config.OS <- s; 
+    if config*.toolchain == "MSVC" do config.toolchain <- "clang"; done
+    if config*.notifier in ("windows","solaris","epoll") do config.notifier <- "kqueue"; done
+
+  | "BSD" => config.OS <- s; 
+    if config*.toolchain == "MSVC" do config.toolchain <- "clang"; done
+    if config*.notifier in ("windows","solaris","epoll") do config.notifier <- "kqueue"; done
+
+
+  | "Posix" => config.OS <- s;
+    if config*.toolchain == "MSVC" do config.toolchain <- "gcc"; done
+    if config*.notifier in ("windows","epoll") do config.notifier <- "poll"; done
+
+  | "Win32" => config.OS <- s; config.toolchain <- "MSVC"; config.notifier <- "windows";
+  | "Win64" => config.OS <- s; config.toolchain <- "MSVC"; config.notifier <- "windows";
+
+  | "Cygwin" => config.OS <- s;
+
+  | "Solaris" => config.OS <- s;
+    if config*.toolchain == "MSVC" do config.toolchain <- "gcc"; done
+    if config*.notifier in ("kqueue","epoll", "windows") do config.notifier <- "solaris"; done
+
+  // Maxalign
+  | "a4" => config.maxalign <- "4";
+  | "a8" => config.maxalign <- "8";
+  | "a16" => config.maxalign <- "16";
+  | "a32" => config.maxalign <- "32";
+
+  // Toolchain
+  | "gcc" => config.toolchain <- s;
+  | "clang" => config.toolchain <- s;
+
+  | "MSVC" => config.toolchain <- s;
+    if config*.OS in ("Solaris","Linux","OSX","Posix","BSD") do config.OS <- "Win32"; done
+    config.notifier <- "windows";
+  
+  // C++ Standard
+  | "C++89" => config.sourcelang<- s;
+  | "C++11" => config.sourcelang<- s;
+  | "C++14" => config.sourcelang<- s;
+
+  // event notification service
+  | "select" => config.notifier<- s;
+  | "poll" => config.notifier<- s;
+  | "epoll" => config.notifier<- s;
+  | "kqueue" => config.notifier<- s;
+  | "windows" => config.notifier<- s;
+  | "solaris" => config.notifier<- s;
+
+  // compiler extensions
+  | "builtin_expect"  => toggle config.have_builtin_expect;
+  | "computed_goto" => toggle config.have_cgoto;
+  | "assembler_labels"  => toggle config.have_asm_labels;
+  | "OpenMP" => toggle config.have_openmp;
+
+  // library functions
+  | "vsnprintf"  => toggle config.have_vsnprintf;
+  | "dlopen"  => toggle config.have_dlopen;
+  | "socklen_t"  => toggle config.have_socklen_t;
+
+  | _ => ; 
+  endmatch; // SelectAction
+}
+
+// make an event handler for our window
+proc ehandler 
+  (w:window_t)
+  (menu_out: oschannel[event_t], menu_in:ischannel[menu_action_t])
+  (edit_buffer1: line_buffer_interface, edit_ch1: oschannel[event_t])
+  (input:ischannel[event_t])  () 
+{
+   // get a first event from the window manager
+  var e: event_t = read input;
+
+  // hack: force redraw by pretending window is resized
+  proc redraw()
+  {
+    w.display config;
+    w.write (10,15,font, black, "Target Directory");
+    var resize_event: event_t; // hack, only fill out some fields
+    &resize_event.type <- SDL_WINDOWEVENT.uint32;
+    &resize_event.window.event <- SDL_WINDOWEVENT_RESIZED.uint8;
+    write$ menu_out, resize_event;
+    response = read menu_in; //ignored
+    C_hack::ignore(response);
+    write$ edit_ch1,resize_event;
+    w.update;
+  }
+
+  // while the event isn't a quit event ..
+  while e.window.event.SDL_WindowEventID != SDL_WINDOWEVENT_CLOSE  do
+    // print a diagnostic
+    var s = 
+      if e.type.SDL_EventType == SDL_WINDOWEVENT then
+        e.type.SDL_EventType.str + ": " + e.window.event.SDL_WindowEventID.str + " wid=" + e.window.windowID.str
+      elif e.type.SDL_EventType != SDL_MOUSEMOTION then
+        e.type.SDL_EventType.str
+      else ""
+    ; 
+    if e.window.event.SDL_WindowEventID == SDL_WINDOWEVENT_RESIZED do 
+      redraw(); 
+    else
+      write$ edit_ch1, e;
+      write$ menu_out, e;
+      var response = read menu_in;
+      match response with
+      | #NoAction => ;
+      | #ChangedPosition => 
+        redraw();
+
+      | SelectedAction s => 
+        println$ "Menu Selection made: " + s;
+        menu_mod_config &config s;
+        println$ "Target=" + edit_buffer1.get();
+        println$ "----------------------------------------------------";
+        println$ "build/release/host/lib/rtl/flx_rtl_config_params_hpp";
+        println$ mk_flx_rtl_config_params_hpp config; 
+
+        println$ "----------------------------------------------------";
+        println$ "build/release/host/lib/flx.flxh";
+        println$ mk_flx_flxh config; 
+
+        println$ "----------------------------------------------------";
+        println$ "build/release/host/lib/rtl/demux_sockety_config_hpp";
+        println$ mk_demux_sockety_config_h config; 
+
+        w.display config;
+
+
+        redraw();
+      endmatch; // Menu response
+    done // Resize event or not
+    // get another event
+    e= read input;
+  done
+
+  // we must have got a quit ..
+  println$ "CLOSE EVENT";
+} 
+
+proc mk_field 
+(
+  window:window_t, x:int, y:int, 
+  font:font_t, colour: colour_t, bgcolour:colour_t, 
+  dflt:string,
+  ed: &line_buffer_interface,
+  o:&oschannel[event_t]
+) 
+{
+  println$ "mk_field ("+x.str +"," + y.str+")="+dflt;
+  var editor = line_buffer (dflt.len.int, dflt);
+  var dc = line_buffer_display_controller (window,font,colour,bgcolour,x,y,editor);
+  dc.display();
+  var ich,och = #(mk_ioschannel_pair[event_t]);
+  var controller = line_edit editor dc ich;
+  spawn_fthread controller; 
+  println$ "mkfield: controller spawned";
+  ed <- editor;
+  o <- och;
+}
+
+
+*/
+
+// Base display routine
+proc display (w:window_t)
+{
+  var surf = get_surface w;
+  w.remove "bg";
+  w.add$ mk_drawable "bg" 0u32 FlxGui::clear lightgrey;
+  w.add$ mk_drawable "bg" 0u32 FlxGui::write (100,10,font,black,"Basic Menu Test");
+}
+
+proc mk_field 
+(
+  window:window_t, x:int, y:int, 
+  font:font_t, colour: colour_t, bgcolour:colour_t, 
+  dflt:string,
+  ed: &line_buffer_interface,
+  dc: &line_buffer_display_controller_interface,
+  o:&oschannel[event_t]
+) 
+{
+  var tag = dflt;
+  println$ "mk_field ("+x.str +"," + y.str+")="+tag;
+  var editor = line_buffer (dflt.len.int, dflt);
+  dc <- line_buffer_display_controller (window,tag,font,colour,bgcolour,x,y,editor);
+  dc*.display();
+  var ich,och = #(mk_ioschannel_pair[event_t]);
+
+  device medit = line_edit editor (*dc);
+  circuit
+    wire ich to medit.ec
+  endcircuit
+
+  println$ "mkfield: controller spawned";
+  ed <- editor;
+  o <- och;
+}
+
+typedef field_data_t = %>event_t * line_buffer_display_controller_interface;
+typedef handler_data_t = (
+  w : window_t,
+  menu_event_write: %>event_t ,
+  menu_response_read: %<menu_action_t,
+  fields : varray[field_data_t]
+);
+ 
+// make an event handler for our window
+chip ehandler (h:handler_data_t)
+connector pins
+  pin input: %<event_t
+{
+  var selected_field = 0;
+  var ev2: SDL_Event;
+  var e: event_t = read pins.input;
+
+  // while the event isn't a quit event ..
+  while e.window.event.SDL_WindowEventID != SDL_WINDOWEVENT_CLOSE  do
+    // print a diagnostic
+    var s = 
+      if e.type.SDL_EventType == SDL_WINDOWEVENT then
+        e.type.SDL_EventType.str + ": " + e.window.event.SDL_WindowEventID.str + " wid=" + e.window.windowID.str
+      elif e.type.SDL_EventType != SDL_MOUSEMOTION then
+        e.type.SDL_EventType.str
+      else ""
+    ; 
+    match e with
+    | KEYDOWN kd when kd.keysym.sym \in (SDLK_TAB, SDLK_RETURN) =>
+      var sel :SDL_Event;
+      &sel.type <- SDL_WINDOWEVENT.uint32;
+      sel.window.event = SDL_WINDOWEVENT_FOCUS_LOST.uint8;
+      write$ h.fields.selected_field.0,sel;
+      selected_field = (selected_field + 1) % h.fields.len.int;
+      sel.window.event = SDL_WINDOWEVENT_FOCUS_GAINED.uint8;
+      write$ h.fields.selected_field.0,sel;
+    | MOUSEBUTTONDOWN mbd =>
+      for i in 0 ..< h.fields.len.int do
+        var d = h.fields.i.1;
+        var x,y = mbd.x, mbd.y;
+        if SDL_Point (x.int, y.int) \in d.get_client_rect() do
+          //println$ "[Evt handler] Button down in client rect of line edit " + d.get_tag();
+          ev2.type = SDL_WINDOWEVENT.uint32;
+          ev2.window.event = SDL_WINDOWEVENT_FOCUS_GAINED.uint8;
+          write$ h.fields.i.0, ev2;
+          write$ h.fields.i.0, e;
+          selected_field = i;
+        else
+          ev2.type = SDL_WINDOWEVENT.uint32;
+          ev2.window.event = SDL_WINDOWEVENT_FOCUS_LOST.uint8;
+          write$ h.fields.i.0,ev2; 
+        done
+      done
+    | _ =>
+      write$ h.fields.selected_field.0, e;
+    endmatch;
+
+    var response = (h.menu_event_write,h.menu_response_read) e;
+    match response with
+    | #NoAction => ;
+    | #ChangedPosition => 
+      h.w.display; // redraw whole window base
+      var resize_event: event_t; // hack, only fill out some fields
+      &resize_event.type <- SDL_WINDOWEVENT.uint32;
+      &resize_event.window.event <- SDL_WINDOWEVENT_RESIZED.uint8;
+      write$ h.menu_event_write, resize_event;
+      response = read h.menu_response_read; //ignored
+      h.w.update();
+
+    | SelectedAction s => println$ "Menu Selection made: " + s;
+    endmatch; 
+    // get another event
+    e= read pins.input;
+  done
+
+  // we must have got a quit ..
+  println$ "CLOSE EVENT";
+} 
+
+
+
+begin
+  //create a window manager
+  var wm = window_manager();
+
+  // create a window
+  var w1 = create_resizable_window("Config Manager",100,100,800,400);
+  w1.display ();
+
+  var iresp,oresp = #mk_ioschannel_pair[menu_action_t];
+  var ievent,oevent = #mk_ioschannel_pair[event_t];
+
+  mk_menu (w1, 1,103, menu, init_state, oresp, ievent);
+/*
+  // create an edit field for the target directory name
+  var edit_ch1: oschannel[event_t]; var edit_buffer1: line_buffer_interface;
+  mk_field (w1, 200, 15, font, black, white, "build/release/host", &edit_buffer1, &edit_ch1);
+*/
+  var ch1: oschannel[event_t]; 
+  var ed1: line_buffer_interface; 
+  var dc1: line_buffer_display_controller_interface;
+  mk_field (w1, 50, 50, font, black, white, "EDITFIELD ONE", &ed1, &dc1, &ch1);
+  
+  var handler_data : handler_data_t = (
+    w = w1,
+    menu_event_write = oevent,
+    menu_response_read = iresp,
+    fields = varray[field_data_t] (1uz,(ch1,dc1))
+  );
+    
+  var ehandle = ehandler handler_data;
+ 
+  // create a window controller for our window
+  var wc1 = window_controller (w1, ehandle);
+
+
+  // attach controller to window manager
+  var wno = wm.add_window wc1;
+
+  // USE variable wno or Felix will elide the call!
+  println$ "Window number " + wno.str;
+
+  // refresh window now
+  w1.update ();
+
+  // run
+  wm.run_with_timeout 60.0;
+  println$ "Flx_config quitting";
+end
+

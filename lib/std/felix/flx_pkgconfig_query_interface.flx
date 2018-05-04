@@ -1,0 +1,13 @@
+#line 463 "/Users/skaller/felix/src/packages/flx_pkgconfig.fdoc"
+class FlxPkgConfigQuery_interface
+{
+  interface FlxPkgConfigQuery_t {
+    query:           list[string] -> int * list[string];
+    getpkgfield:     (1->0) -> string * string -> list[string];
+    getpkgfield1:    (1->0) -> string * string -> string;
+    getpkgfieldopt:  (1->0) -> string * string -> opt[string];
+    getpkgfielddflt: (1->0) -> string * string ->  string;
+    getclosure:      (1->0) -> string -> list[string];
+   }
+}
+

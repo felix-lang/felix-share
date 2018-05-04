@@ -1,0 +1,433 @@
+#line 687 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+class Dynlink
+{
+#line 691 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  requires package "flx_dynlink";
+
+#line 700 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Exception thrown if dynamic linkage fails.
+  type flx_link_failure_t = "::flx::rtl::flx_link_failure_t";
+
+  //$ Constructor for dynamic linkage exception.
+  ctor flx_link_failure_t : string * string * string = "::flx::rtl::flx_link_failure_t($1,$2,$3)";
+
+  //$ Extractors.
+  fun filename : flx_link_failure_t -> string = "$1.filename";
+  fun operation : flx_link_failure_t -> string = "$1.operation";
+  fun what : flx_link_failure_t -> string = "$1.what";
+
+  //$ Delete returned exception.
+  proc delete : cptr[flx_link_failure_t] = "delete $1;";
+
+  //$ This doesn't belong here but it will do for now
+  fun get_debug_driver_flag : 1 -> bool = "PTF gcp->debug_driver" requires property "needs_gc";
+
+#line 723 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Type of a DLL (dynamic link library) object.
+  _gc_pointer type flx_library = "::flx::dynlink::flx_dynlink_t*";
+
+#line 730 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Create a fresh DLL object.
+  fun create_library_handle: bool ->flx_library=
+    "new(*PTF gcp, ::flx::dynlink::flx_dynlink_ptr_map, false) ::flx::dynlink::flx_dynlink_t($1)";
+
+#line 738 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Link a DLL using given filename.
+  //$ May throw flx_link_failure_t.
+  proc dlopen:flx_library * string = "$1->dynamic_link($2);";
+
+  //$ Link a DLL using given filename and modulename.
+  //$ May throw flx_link_failure_t.
+  proc modopen:flx_library * string * string =
+    "$1->dynamic_link_with_modulename($2, $3);"
+  ;
+
+   //$ Link static
+  proc set_entry_points : flx_library * string * address * address =
+    "$1->static_link($2,(::flx::dynlink::thread_frame_creator_t)$3, (::flx::dynlink::start_t)$4, NULL);"
+  ;
+
+#line 756 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  typedef module_dictionary_t = StrDict::strdict[address];
+  typedef registry_t = StrDict::strdict[module_dictionary_t];
+  fun get_module_registry_address_address: 1 -> &&registry_t =
+    "(void****)(void*)&(PTF gcp->collector->module_registry)"
+    requires property "needs_gc";
+
+  // severe hackery: if the registry isn't initialised,
+  // create one, store its address in the GC object, and make
+  // it a root so the GC scans it: the GC isn't owned by itself,
+  // but the registry is owned by the GC.
+  gen get_module_registry  () :registry_t = {
+    var ppregistry : &&registry_t = #get_module_registry_address_address;
+    var pregistry : &registry_t = *ppregistry;
+    if C_hack::isNULL (pregistry) do
+      pregistry = new (StrDict::strdict[module_dictionary_t] ());
+      ppregistry <- pregistry;
+      Gc::add_root (C_hack::cast[address] (pregistry));
+    done
+    return *pregistry;
+  }
+
+  noinline proc regopen (registry:registry_t) (lib:flx_library, modulename:string)
+  {
+     //println$ "regopen " + modulename;
+     var mod = StrDict::get registry modulename;
+     match mod with
+     | #None =>
+       //println$ "Not in registry, using dlopen for " + modulename;
+       modopen$ lib, modulename+#Filename::dynamic_library_extension, modulename;
+     | Some dict =>
+       //println$ "Found module "+modulename+" in registry";
+       var tfc = dict.get_dflt (modulename+"_create_thread_frame", NULL);
+       //println$ "Thread frame creator = " + str tfc;
+       if tfc == NULL do
+         raise$ flx_link_failure_t(modulename,"regopen","Cannot find symbol " + modulename+"_create_thread_frame in module registry for " + modulename);
+       done
+       var start_sym = dict.get_dflt (modulename+"_flx_start",NULL);
+       if start_sym == NULL do
+         raise$ flx_link_failure_t(modulename,"regopen","Cannot find symbol " + modulename+"_flx_start in module registry for "+modulename);
+       done
+       //println$ "Start symbol = " + str start_sym;
+       set_entry_points$ lib,modulename,tfc, start_sym;
+     endmatch;
+  }
+
+#line 803 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Get the filename of a DLL.
+  fun filename : flx_library -> string = "$1->filename";
+
+  //$ Get the modulename of a DLL.
+  fun modulename : flx_library -> string = "$1->modulename";
+
+  //$ Get the threadframe creator function
+  fun get_thread_frame_creator_as_address: flx_library -> address  = "(void*)$1->thread_frame_creator";
+
+  //$ Get start function
+  fun get_start_as_address: flx_library -> address  = "(void*)$1->start_sym";
+
+  noinline proc add_symbol  (modulename:string, symbolname:string, adr:address)
+  {
+     //println$ "add symbol " + symbolname + " to module " + modulename+ " value " + str adr;
+     var registry = #Dynlink::get_module_registry;
+     var mod = #{
+       match get registry modulename with
+       | #None =>
+          var mod = #strdict[address];
+          add registry modulename mod;
+          return mod;
+       | Some dict => return dict;
+       endmatch;
+     };
+     mod.add symbolname adr;
+  }
+
+
+#line 855 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Unlink a DLL.
+  //$ Unsafe! Use with extreme caution.
+  //$ May cause pointers into the DLL code segment to dangle.
+  proc dlclose:flx_library = "$1->unlink();";
+
+#line 873 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Find raw address of a symbol in a DLL.
+  //$ This function now ALWAYS does a dlsym
+  //$ (or Windows equivalent)
+  //$ even for static linkage: after all
+  //$ statically linked executables can still
+  //$ load DLLs at run time.
+  fun raw_dlsym:flx_library * string->address =
+      "FLX_NATIVE_SDLSYM($1->library,$2.c_str())";
+
+  noinline fun find_sym(lib:flx_library, sym:string) : address =
+  {
+    if lib.filename == "" do
+      var reg = #get_module_registry;
+      match reg.get lib.modulename with
+      | #None => return NULL;
+      | Some dict =>
+        match dict.get sym with
+        | #None => return NULL;
+        | Some sym => return sym;
+        endmatch;
+      endmatch;
+    else
+      return raw_dlsym (lib,sym);
+    done
+  }
+
+#line 906 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Type of a DLL (dynamic link library) instance.
+  //$ Conceptually this is a pair consisting of
+  //$ a library object and a global data frame object.
+  _gc_pointer type flx_instance = "::flx::dynlink::flx_libinst_t*";
+
+#line 915 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Create a fresh DLL instance object.
+  fun create_instance_handle: bool->flx_instance=
+    "new(*PTF gcp, ::flx::dynlink::flx_libinst_ptr_map, false) ::flx::dynlink::flx_libinst_t($1)";
+
+#line 926 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Create a DLL instance from a DLL.
+  //$ This is a procedure, so maybe the caller is too
+  //$ which means the thread frame must be available.
+  proc create: flx_library * flx_instance =
+    "$2->create($1,PTF gcp,PTF argc,PTF argv,PTF flx_stdin, PTF flx_stdout, PTF flx_stderr, false);"
+    requires property "needs_gc"
+  ;
+
+  proc create_with_args: flx_library * flx_instance * int * + (+char) =
+    "$2->create($1,PTF gcp,$3,$4,PTF flx_stdin, PTF flx_stdout, PTF flx_stderr, false);"
+    requires property "needs_gc"
+  ;
+
+  proc create_with_args (lib:flx_library, inst:flx_instance, args:list[string])
+  {
+    // convert list to a varray of strings
+    var a = varray args;
+
+    // now convert to varray of char pointers
+    gen myget(i:size)=>a.i.cstr;
+    var x = varray[+char] (a.len,a.len,myget);
+    create_with_args (lib,inst,x.len.int,x.stl_begin);
+  }
+
+
+#line 953 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Get the filename of a DLL from an instance of it.
+  fun filename : flx_instance -> string = "::std::string($1->lib->filename)";
+
+#line 979 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Get the initialisation continuation of an instance.
+  fun get_init: flx_instance -> cont = "$1->start_proc";
+
+#line 984 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Get the DLL associated with an instance.
+  fun get_library: flx_instance -> flx_library = "$1->lib";
+
+#line 991 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Get the thread frame (global data object) of an instance.
+  fun get_thread_frame: flx_instance -> address = "(void*)$1->thread_frame";
+
+#line 1000 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+
+  //$ Create, link, and prepare a DLL instance from a modulename.
+  //$ NOTE: libraries created here do not need to be roots
+  // The code is never deleted (due to design issues with C).
+  // If the library isn't reachable, you can't create an instance.
+  // If an instance is created, it reaches the library.
+  noinline gen prepare_lib(modulename:string):flx_instance = {
+    var dlibrary = create_library_handle(get_debug_driver_flag());
+    //Gc::add_root (C_hack::cast[address] library);
+    var linstance =  create_instance_handle(get_debug_driver_flag());
+    regopen #get_module_registry (dlibrary,modulename);
+    create (dlibrary,linstance);
+    return linstance;
+  }
+
+  //$ Create, link, and prepare a DLL instance from a modulename.
+  noinline gen prepare_lib_with_args(modulename:string, args:list[string]):flx_instance = {
+    var dlibrary = create_library_handle(get_debug_driver_flag());
+    //Gc::add_root (C_hack::cast[address] library);
+    var linstance =  create_instance_handle(get_debug_driver_flag());
+    regopen #get_module_registry (dlibrary,modulename);
+    create_with_args (dlibrary,linstance,args);
+    return linstance;
+  }
+
+
+  //$ Create, link, and initialise a  DLL instance from a modulename.
+  noinline gen init_lib(modulename:string):flx_instance = {
+    var linstance = prepare_lib(modulename);
+    var init = get_init linstance;
+    Fibres::run init;
+    return linstance;
+  }
+
+  //$ Create, link, and initialise a  DLL instance from a modulename.
+  noinline gen init_lib_with_args(modulename:string, args:list[string]):flx_instance = {
+    var linstance = prepare_lib_with_args(modulename,args);
+    var init = get_init linstance;
+    Fibres::run init;
+    return linstance;
+  }
+
+
+#line 1046 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Run a Felix program from a filename.
+  proc run_lib(modulename:string)
+  {
+    var linstance = init_lib(modulename);
+    C_hack::ignore(linstance);
+  }
+
+  // BUG: no return code!
+  proc run_program(args:list[string])
+  {
+    match args with
+    | Cons (h, t) =>
+      var linstance = prepare_lib_with_args(h,t);
+      var init = get_init linstance;
+      Fibres::run init;
+    | _ => ;
+    endmatch;
+  }
+
+
+#line 1072 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Find typed address of a symbol in a DLL.
+  noinline fun flx_dlsym[T] (linst: flx_instance, sym:string) = {
+    var dlibrary = Dynlink::get_library linst;
+    var tf = Dynlink::get_thread_frame linst;
+//println$ "Trying to load symbol " + sym + " from library " + linst.filename;
+    var raw_sym = Dynlink::find_sym$ dlibrary, sym;
+    if isNULL raw_sym do
+      eprintln$ "Unable to load symbol " + sym + " from library " + linst.filename;
+      raise$ flx_link_failure_t(linst.filename,"dlsym","Cannot find symbol " + sym);
+    done
+//    eprintln$ "loaded symbol " + sym + " from library " + linst.filename + " address= " + str raw_sym;
+    var typed_sym = C_hack::cast[T] raw_sym;
+    return typed_sym, tf;
+  }
+
+#line 1107 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a function of no arguments.
+  noinline fun func0[R] (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address --> R] (linst, sym);
+    return fun () => s tf;
+  }
+
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a function of one argument.
+  noinline fun func1[R,A0] (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address * A0 --> R] (linst, sym);
+    return fun (a0:A0) => s (tf, a0);
+  }
+
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a function of two arguments.
+  noinline fun func2[R,A0,A1] (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address * A0 * A1 --> R] (linst, sym);
+    return fun (var a0:A0, var a1:A1) => s (tf, a0, a1);
+  }
+
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a procedure of no arguments.
+  noinline fun proc0 (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address --> void] (linst, sym);
+    return proc () { s tf; };
+  }
+
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a procedure of one argument.
+  noinline fun proc1[A0] (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address * A0 --> void] (linst, sym);
+    return proc (a0:A0) { s (tf, a0); };
+  }
+
+  //$ Return a closure representing a symbol in a DLL instance
+  //$ of a procedure of two arguments.
+  noinline fun proc2[A0,A1] (linst: flx_instance, sym:string) = {
+    var s,tf= flx_dlsym[address * A0 * A1 --> void] (linst, sym);
+    return proc (a0:A0,a1:A1) { s (tf, a0, a1); };
+  }
+
+#line 1173 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+  //$ Specialised routine(s) to load stylised plugin.
+  //$ Two entry points:
+  //$
+  //$ setup: string -> int
+  //$
+  //$ is called to initialise the instance globals.
+  //$
+  //$ entry-point: arg -> iftype
+  //$
+  //$ is the primary entry point, typically an object factory,
+  //$ when called with an argument
+  //$ of type arg_t it returns //$ an object of type iftype.
+  //$
+  //$ This function returns the object factory.
+  //$ setup is called automatically with the supplied string.
+  //$
+  //$ There are 3 variants where the factory function accepts
+  //$ 0, 1 and 2 arguments.
+  noinline gen  load-plugin-func0[iftype] (
+    dll-name: string,   // name of the DLL minus the extension
+    setup-str: string="",  // string to pass to setup
+    entry-point: string=""   // export name of factory function
+  ) : unit -> iftype =
+  {
+    var entrypoint = if entry-point == "" then dll-name else entry-point;
+    var linst = Dynlink::init_lib(dll-name);
+    var sresult = Dynlink::func1[int,string] (linst, dll-name+"_setup") (setup-str);
+    C_hack::ignore(sresult);
+    if sresult != 0 call eprintln$ "[dynlink] Warning: Plugin Library " + dll-name + " set up returned " + str sresult;
+    return Dynlink::func0[iftype] (linst, entrypoint);
+  }
+
+  noinline gen  load-plugin-func1[iftype, arg_t] (
+    dll-name: string,   // name of the DLL minus the extension
+    setup-str: string="",  // string to pass to setup
+    entry-point: string=""   // export name of factory function
+  ) : arg_t -> iftype =
+  {
+    var entrypoint = if entry-point == "" then dll-name else entry-point;
+    var linst = Dynlink::init_lib(dll-name);
+    var sresult = Dynlink::func1[int,string] (linst, dll-name+"_setup") (setup-str);
+    C_hack::ignore(sresult);
+    if sresult != 0 call eprintln$ "[dynlink] Warning: Plugin Library " + dll-name + " set up returned " + str sresult;
+    return Dynlink::func1[iftype,arg_t] (linst, entrypoint);
+  }
+
+  noinline gen  load-plugin-func2[iftype, arg1_t, arg2_t] (
+    dll-name: string,   // name of the DLL minus the extension
+    setup-str: string="",  // string to pass to setup
+    entry-point: string=""   // export name of factory function
+  ) : arg1_t * arg2_t -> iftype =
+  {
+    var entrypoint = if entry-point == "" then dll-name else entry-point;
+    var linst = Dynlink::init_lib(dll-name);
+    var sresult = Dynlink::func1[int,string] (linst, dll-name+"_setup") (setup-str);
+    C_hack::ignore(sresult);
+    if sresult != 0 call eprintln$ "[dynlink] Warning: Plugin Library " + dll-name + " set up returned " + str sresult;
+    return Dynlink::func2[iftype,arg1_t, arg2_t] (linst, entrypoint);
+  }
+
+#line 1235 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+
+  //$ Execute an address representing a top
+  //$ level exported felix procedure's C wrapper,
+  //$ this creates a 'read to run' continuation object
+  //$ by both constructing the object using the thread
+  //$ frame of the instance as an argument, and calling
+  //$ it to fix a null return address and an arbitrary
+  //$ client data pointer as arguments to the call method.
+  fun bind_proc: flx_instance * address * address -> cont =
+    "$1->bind_proc($2,$3)";
+
+  //$ Get the OS dependent handle representing a loaded DLL.
+  //$ Return as an address.
+  fun dlib_of : flx_library -> address = "(void*)$1->library";
+
+  //$ Throw an exception indicating the failure to
+  //$ find a symbol in a DLL.
+  proc dlsym_err:flx_library*string="""
+    throw ::flx::rtl::flx_link_failure_t($1->filename,$2,"symbol not found");
+  """;
+
+  //$ Run a procedure represented by a string name with
+  //$ given thread frame.
+  noinline proc run_proc (linstance:flx_instance, p: string, data: address)
+  {
+    var lib = get_library linstance;
+    var sym = find_sym(lib, p);
+    if isNULL(sym) call dlsym_err(lib,p);
+    var f = bind_proc(linstance, sym, data);
+    run f;
+  }
+
+
+}
+
+

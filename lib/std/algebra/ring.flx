@@ -1,0 +1,41 @@
+#line 600 "/Users/skaller/felix/src/packages/algebra.fdoc"
+//$ Float-approximate ring.
+class FloatRing[t] {
+  inherit FloatAddgrp[t];
+  inherit FloatMultSemi1[t];
+}
+
+#line 611 "/Users/skaller/felix/src/packages/algebra.fdoc"
+//$ Ring.
+class Ring[t] {
+  inherit Addgrp[t];
+  inherit MultSemi1[t];
+  axiom distrib (x:t,y:t,z:t): x * ( y + z) == x * y + x * z;
+}
+#line 621 "/Users/skaller/felix/src/packages/algebra.fdoc"
+//$ Float-approximate division ring.
+class FloatDring[t] {
+  inherit FloatRing[t];
+  virtual fun / : t * t -> t; // pre t != 0
+  fun \over (x:t,y:t) => x / y;
+
+  virtual proc /= : &t * t;
+  virtual fun % : t * t -> t;
+  virtual proc %= : &t * t;
+
+  fun div(x:t, y:t) => x / y;
+  fun mod(x:t, y:t) => x % y;
+  fun \bmod(x:t, y:t) => x % y;
+  fun recip (x:t) => #one / x;
+
+  proc diveq(px:&t, y:t) { /= (px,y); }
+  proc modeq(px:&t, y:t) { %= (px,y); }
+}
+
+#line 660 "/Users/skaller/felix/src/packages/algebra.fdoc"
+//$ Division ring.
+class Dring[t] {
+  inherit Ring[t];
+  inherit FloatDring[t];
+}
+

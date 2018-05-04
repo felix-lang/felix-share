@@ -1,0 +1,203 @@
+#line 664 "/Users/skaller/felix/src/packages/flx_pkgconfig.fdoc"
+include "std/felix/flx_pkgconfig";
+
+class FlxPkg
+{
+  typedef pkgconfig_inspec_t = (
+    FLX_CONFIG_DIRS: list[string],
+    FLX_TARGET_DIR:string,
+    EXT_EXE: string,
+    EXT_STATIC_OBJ: string,
+    EXT_DYNAMIC_OBJ: string,
+    STATIC: int,
+    LINKEXE: int,
+    SLINK_STRINGS: list[string],
+    DLINK_STRINGS: list[string],
+    LINKER_SWITCHES: list[string],
+    EXTRA_PACKAGES: list[string],
+    cpp_filebase : string
+  );
+
+  typedef pkgconfig_outspec_t = (
+    CFLAGS: list[string],
+    INCLUDE_FILES: list[string],
+    DRIVER_EXE: string,
+    DRIVER_OBJS: list[string],
+    LINK_STRINGS: list[string]
+  );
+
+  fun fix2word_flags (fs: list[string]) = {
+    //println$ "Fix2word, input=" + fs.str;
+    var output =  fold_left
+     (fun (acc:list[string]) (elt:string) =>
+       if prefix (elt, "---") then acc + (split (elt.[2 to], char "="))
+       else acc + elt
+       endif
+      )
+      Empty[string]
+      fs
+    ;
+    //println$ "Fix2word, output=" + output.str;
+    return output;
+  }
+
+
+  // Model:
+  // Static link exe: return the object files required, no driver exe
+  // Dynamic link exe: the same
+  // DLL: return the executable (flx_run) required to run the DLL
+  //
+  // We provide instructions to link the target binary and how to run it.
+
+/*
+  proc ehandler () {
+    eprintln$ "Flx_pkgconfig: map_package_requirements: failed, temporary ehandler invoked";
+    System::exit 1;
+  }
+*/
+  gen map_package_requirements (ehandler:1->0) (spec:pkgconfig_inspec_t) : pkgconfig_outspec_t =
+  {
+
+/*
+println$ "MAP PACKAGE REQUIREMENTS: LINK " +
+  if spec.LINKEXE==1
+  then "EXE"  + " ("+if spec.STATIC==1 then "full" else "with DLL support" endif + ")"
+  else "DLL"
+  endif
+;
+*/
+    var PKGCONFIG_PATH=map
+       (fun (s:string) => "--path+="+s)
+       spec.FLX_CONFIG_DIRS
+    ;
+    var RESH = "@"+spec.cpp_filebase+".resh";
+
+    gen pkgconfl(args:list[string]) : list[string] =
+    {
+      if spec.EXTRA_PACKAGES != Empty[string] call
+         eprintln$ "calpackages, EXTRA_PACKAGES = " + str spec.EXTRA_PACKAGES
+      ;
+      var allargs = PKGCONFIG_PATH+args+spec.EXTRA_PACKAGES + RESH;
+      var ret,s = FlxPkgConfig::flx_pkgconfig(allargs);
+      if ret != 0 do
+        eprintln$ "[FlxPkg:map_package_requirements] Error " + str ret + " executing flx_pkgconfig, args=" + str allargs;
+        // FIXME
+        //System::exit (1);
+        throw_continuation ehandler;
+      done
+      return s;
+    }
+    gen pkgconfs(args:list[string]) : string => cat ' ' $ pkgconfl(args);
+
+    var e = Empty[string];
+
+    // find all include directories
+    var CFLAGS=pkgconfl(e+'--field=cflags'+'--keepleftmost');
+
+    // find all include files
+    var INCLUDE_FILES=pkgconfl(e+'--field=includes'+'--keepleftmost');
+
+
+    // find the driver package
+    var DRIVER_PKG=pkgconfs(e+'--field=flx_requires_driver');
+    if DRIVER_PKG == "" do DRIVER_PKG="flx_run"; done
+
+    // find the driver entity
+    if spec.STATIC == 0 do
+      // dynamic linkage: the driver executable
+      if spec.LINKEXE == 0 do
+        var DRIVER_EXE= Filename::join$ list (
+          spec.FLX_TARGET_DIR,
+          "bin",
+          DRIVER_PKG+spec.EXT_EXE
+        );
+        var DRIVER_OBJS = Empty[string];
+      else
+      // dynamic linkage: the object files for executable with DLL support
+        DRIVER_OBJS =list(
+          Filename::join (list (
+            spec.FLX_TARGET_DIR,
+            "lib",
+            "rtl",
+            DRIVER_PKG+"_lib_static"+
+            spec.EXT_DYNAMIC_OBJ)),
+          Filename::join (list (
+            spec.FLX_TARGET_DIR,
+            "lib",
+            "rtl",
+            DRIVER_PKG+"_main"+spec.EXT_DYNAMIC_OBJ))
+        );
+        DRIVER_EXE = "";
+      done
+    else
+      // static linkage: the object files for full static link
+      DRIVER_OBJS =list(
+        Filename::join (list (
+          spec.FLX_TARGET_DIR,
+          "lib",
+          "rtl",
+          DRIVER_PKG+"_lib_static"+
+          spec.EXT_STATIC_OBJ)),
+        Filename::join (list (
+          spec.FLX_TARGET_DIR,
+          "lib",
+          "rtl",
+          DRIVER_PKG+"_main"+spec.EXT_STATIC_OBJ))
+      );
+      DRIVER_EXE = "";
+    done
+
+    if spec.STATIC == 0 do
+      if spec.LINKEXE == 0 do
+        // Linking a DLL
+        var LINK_STRINGS =
+          spec.DLINK_STRINGS+
+          spec.LINKER_SWITCHES+
+          pkgconfl(e+'-r'+'--keeprightmost'+'--field=provides_dlib'+'--field=requires_dlibs'+DRIVER_PKG);
+      else
+        // Linking an EXE (with DLL support)
+        LINK_STRINGS =
+          spec.DLINK_STRINGS +
+          spec.LINKER_SWITCHES+
+          pkgconfl(e+'-r'+'--keepleftmost'+'--field=provides_dlib'+'--field=requires_dlibs'+DRIVER_PKG);
+      done
+    else
+      // static linkage: all the libraries required by the application and driver
+      // This has to be recursive to find the closure.
+      // Linking an EXE (fully static)
+      LINK_STRINGS =
+        spec.SLINK_STRINGS+
+        spec.LINKER_SWITCHES+
+        pkgconfl(e+'-r'+'--keeprightmost'+'--field=provides_slib'+'--field=requires_slibs'+DRIVER_PKG);
+    done
+    LINK_STRINGS = fold_left
+      (fun (acc:list[string]) (elt:string) =>
+        if prefix (elt, "---") then
+         acc + split (elt.[2 to], char "=")
+        else acc + elt
+        endif
+      )
+      Empty[string]
+      LINK_STRINGS
+    ;
+
+    return (
+      CFLAGS = CFLAGS,
+      INCLUDE_FILES = INCLUDE_FILES,
+      DRIVER_EXE = DRIVER_EXE,
+      DRIVER_OBJS = DRIVER_OBJS,
+      LINK_STRINGS = LINK_STRINGS
+    );
+  }
+
+  proc write_include_file(path:string, INCLUDE_FILES:list[string]) {
+    var f = fopen_output(path+".includes");
+    List::iter
+      (proc (i:string) { writeln$ f, "#include " + i; })
+      INCLUDE_FILES
+    ;
+    fclose f;
+  }
+
+}
+

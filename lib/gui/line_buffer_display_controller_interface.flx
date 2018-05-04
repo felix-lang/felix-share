@@ -1,0 +1,14 @@
+#line 1871 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiLineBufferDisplayControllerInterface
+{
+interface line_buffer_display_controller_interface
+{
+  get_tag : 1 -> string;
+  get_client_rect : 1 -> rect_t;
+  get_char_width : 1 -> int;
+  display : 1 -> 0;
+  set_focus_gained: 1 -> 0; //
+  set_focus_lost: 1 -> 0;
+}
+}
+

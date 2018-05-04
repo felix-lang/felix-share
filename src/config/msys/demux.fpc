@@ -1,0 +1,17 @@
+Generated_from: 119 "/Users/skaller/felix/src/packages/demux.fdoc"
+Name: demux
+Description: Event handling (windows event ports with gcc)
+Comment: Generated during configuration
+provides_dlib: -ldemux_dynamic
+requires_dlibs: -lws2_32 -lmswsock
+provides_slib: -ldemux_static
+requires_slibs: -lws2_32 -lmswsock
+Requires: flx_pthread
+flx_requires_driver: flx_arun
+macros: BUILD_DEMUX
+includes: '"flx_demux.hpp"'
+library: demux
+headers: (.*/)?([^/\\]+\.hpp)>${2}
+srcdir: src/demux
+src: [^/\\]+\.cpp
+src: win/.*\.cpp

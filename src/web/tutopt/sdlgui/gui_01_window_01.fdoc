@@ -1,0 +1,23 @@
+@title Basic Window Creation
+@felix
+include "gui/__init__";
+open FlxGui;
+
+println$ "Basic Window Test";
+
+var clock = Faio::mk_alarm_clock();
+
+// Initialise the SDL system (SDL + TTF + IMAGE)
+FlxGui::init();
+FlxGui::versions();
+
+var w = create_resizable_window("Felix:gui_01_window_01",100,100,400,400);
+w.add$ mk_drawable FlxGuiSurface::clear lightgrey;
+w.update();
+w.show();
+
+Faio::sleep(clock,15.0);
+
+
+
+

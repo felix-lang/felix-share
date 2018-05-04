@@ -1,0 +1,64 @@
+@h1 Pointers
+We have introduced variables of the @{var} kind, and now
+for the dreaded pointers! Again, our standard bindings:
+@felix
+include "./intro_02";
+@expect
+hello world
+3
+mytrue
+3
+2
+@
+and now we meet pointer types:
+@felix
+var x : myint = one;
+var px : &myint = &x;
+myprintln (*px);
+@expect
+1
+@
+
+@h2 Address of operator <code>&amp;</code>
+The address-of operator {&} can be used to take the address
+of a @{var}iable of some type @{T} to produce a value
+of type pointer-to-@{T}, written {&T}.
+
+In the example, we have a variable @{x} of type @{myint}
+and we take its address and put it in another
+variable @{px} of type {&myint}.
+
+@h2 Dereference operator <code>*</code>
+We can use the dereference operator {*} on any value
+of type {&T} to fetch a value of type @{T} from the storage
+location pointer at by the ponter. In the example, we 
+retrieve the value of type @{myint} from the pointer
+@{px} of type {&myint) this way.
+
+This is not particularly useful, however if we assign
+a new value to @{x} we retrieve that too:
+@felix
+x = two;
+myprintln (*px);
+@expect
+2
+@
+
+@h2 Assignment through pointer <code>&lt;-</code>
+We can also assign a value to the store pointed at
+by @{px} through that pointer:
+@felix
+px <- two;
+myprintln (x);
+@expect
+2
+@
+
+From these rules you may understand that @{var}-ables
+are addressable and mutable. The store a @{var}-able
+represents is one example of an object which may hold
+a value, however which value may change with time.
+
+The distinction between objects and values is crucial:
+in Felix all values are immutable and cannot be modified.
+

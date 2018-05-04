@@ -1,0 +1,28 @@
+#line 847 "/Users/skaller/felix/src/packages/algebra.fdoc"
+//$ Float-approximate real numbers.
+class Real[t] {
+  inherit Tord[t];
+  inherit Trig[t];
+  inherit Special[t];
+  virtual fun embed: int -> t;
+
+  virtual fun log10: t -> t;
+  virtual fun abs: t -> t;
+
+  virtual fun sqrt: t -> t;
+  fun \sqrt (x:t) => sqrt x;
+  virtual fun ceil: t -> t;
+    // tex \lceil \rceil defined in grammar
+
+  virtual fun floor: t -> t;
+    // tex \lfloor \rfloor defined in grammar
+
+  virtual fun trunc: t -> t;
+
+  // this trig function is included here because it
+  // is not available for complex numbers
+  virtual fun atan2: t * t -> t;
+
+}
+
+

@@ -1,0 +1,28 @@
+#line 146 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiTypes
+{
+  typedef font_t = TTF_Font;
+  typedef colour_t = SDL_Color;
+  typedef color_t = colour_t; // dang yanks ..
+
+  // rectangular shape without origin
+  typedef box_t = (w:int,h:int);
+  ctor box_t(w:int,h:int)=>(w=w,h=h);
+
+  // point
+  typedef point_t = SDL_Point;
+  ctor point_t(x:int,y:int)=>SDL_Point(x,y);
+
+  // box with origin for label (margin, baseline)
+  typedef label_box_t = (box:box_t, label_origin: point_t);
+  ctor label_box_t (box:box_t, label_origin: point_t)=> (box=box,label_origin=label_origin);
+
+  // rectangular shape with top left origin
+  typedef rect_t = SDL_Rect;
+  ctor rect_t (x:int, y:int, w:int, h:int) => SDL_Rect (x,y,w,h);
+  ctor rect_t (xy:point_t, dim:box_t) => SDL_Rect (xy.x,xy.y,dim.w,dim.h);
+
+  // label rect
+  typedef label_rect_t = (xy:point_t, lb: label_box_t);
+}
+

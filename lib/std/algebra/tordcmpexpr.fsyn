@@ -1,0 +1,35 @@
+#line 439 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax tordcmpexpr
+{
+  cmp := "<" =># "(nos _1)";
+
+  cmp := "\lt" =># '(nos _1)';
+  cmp := "\lneq" =># '(nos _1)';
+  cmp := "\lneqq" =># '(nos _1)';
+
+  cmp := "<=" =># "(nos _1)";
+  cmp := "\le" =># '(nos _1)';
+  cmp := "\leq" =># '(nos _1)';
+  cmp := "\leqq" =># '(nos _1)';
+
+  cmp := ">" =># "(nos _1)";
+  cmp := "\gt" =># '(nos _1)';
+  cmp := "\gneq" =># '(nos _1)';
+  cmp := "\gneqq" =># '(nos _1)';
+
+  cmp := ">=" =># "(nos _1)";
+  cmp := "\ge" =># '(nos _1)';
+  cmp := "\geq" =># '(nos _1)';
+  cmp := "\geqq" =># '(nos _1)';
+
+  cmp := "\nless" =># '(nos _1)';
+  cmp := "\nleq" =># '(nos _1)';
+  cmp := "\nleqq" =># '(nos _1)';
+  cmp := "\ngtr" =># '(nos _1)';
+  cmp := "\ngeq" =># '(nos _1)';
+  cmp := "\ngeqq" =># '(nos _1)';
+
+  bin := "\vee" =># '(nos _1)';
+  bin := "\wedge" =># '(nos _1)';
+}
+

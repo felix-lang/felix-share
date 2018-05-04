@@ -1,0 +1,5 @@
+#line 9 "/Users/skaller/felix/src/packages/strings.fdoc"
+include "std/strings/string";
+include "std/strings/cstring";
+include "std/strings/ustr";
+

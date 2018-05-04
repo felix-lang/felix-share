@@ -1,0 +1,252 @@
+#line 655 "/Users/skaller/felix/src/packages/trees.fdoc"
+class BinarySearchTree[T with Tord[T]]
+{
+#line 659 "/Users/skaller/felix/src/packages/trees.fdoc"
+  typedef bstree_node_t =
+    (
+      elt: T,
+      parent:bstree_t,
+      left:bstree_t,
+      right:bstree_t
+    )
+  ;
+  union bstree_t =
+    | #Empty
+    | Node of &bstree_node_t
+  ;
+
+#line 674 "/Users/skaller/felix/src/packages/trees.fdoc"
+
+  fun leaf: bstree_t -> bool =
+    | #Empty => false
+    | Node p =>
+      match p*.left, p*.right with
+      | #Empty, Empty => true
+      | _ => false
+  ;
+
+  fun leaf_or_empty : bstree_t -> bool =
+    | #Empty => true
+    | x => leaf x
+  ;
+
+#line 690 "/Users/skaller/felix/src/packages/trees.fdoc"
+  instance Str[bstree_t] {
+    fun str : bstree_t -> string =
+      | #Empty => "()"
+      | Node p =>
+        p*.elt.str + "(" + p*.left.str + ") (" + p*.right.str + ")"
+    ;
+  }
+
+#line 702 "/Users/skaller/felix/src/packages/trees.fdoc"
+  // Skiena p78
+  fun find (tree:bstree_t) (elt:T) : bstree_t =>
+    // saves passing invariant elt
+    let fun aux (tree:bstree_t) : bstree_t =>
+      match tree with
+      | #Empty => tree
+      | Node p =>
+         if p*.elt == elt then tree
+         elif elt < p*.elt then aux p*.left
+         else aux p*.right
+      endmatch
+    in aux tree
+  ;
+
+#line 720 "/Users/skaller/felix/src/packages/trees.fdoc"
+  fun min (x:bstree_t) =>
+    match x with
+    | #Empty => x
+    | Node p =>
+      let fun aux (p:&bstree_node_t) =>
+        match *p.left with
+        | #Empty => Node p
+        | Node p => aux p
+      in aux p
+   ;
+#line 734 "/Users/skaller/felix/src/packages/trees.fdoc"
+   proc iter (f: T -> 0) (x:bstree_t) =
+   {
+      proc aux (x:bstree_t) = {
+        match x with
+        | #Empty => ;
+        | Node p =>
+          aux p*.left;
+          f p*.elt;
+          aux p*.right;
+        endmatch;
+      }
+     aux x;
+   }
+
+#line 751 "/Users/skaller/felix/src/packages/trees.fdoc"
+  fun fold_left[U] (_f:U->T->U) (init:U) (x:bstree_t): U = {
+    var sum = init;
+    iter proc (elt:T) { sum = _f sum elt; } x;
+    return sum;
+  }
+
+#line 760 "/Users/skaller/felix/src/packages/trees.fdoc"
+  fun map[U] (_f:T->U) (x:bstree_t): BinarySearchTree[U]::bstree_t = {
+    var res = BinarySearchTree::Empty[U];
+    iter proc (elt:T) { BinarySearchTree[U]::insert &res elt._f; } x;
+    return res;
+  }
+
+#line 768 "/Users/skaller/felix/src/packages/trees.fdoc"
+  ctor bstree_t () => Empty;
+  ctor bstree_node_t (x:T) => (parent=Empty,elt=x,left=Empty,right=Empty);
+  ctor bstree_node_t (x:T, p:bstree_t) => (parent=p,elt=x,left=Empty,right=Empty);
+
+  ctor bstree_t (x:T) => Node (new (bstree_node_t x));
+  ctor bstree_t (x:T, p:bstree_t) => Node (new (bstree_node_t (x,p)));
+
+#line 777 "/Users/skaller/felix/src/packages/trees.fdoc"
+  // Note: this routine disallows duplicates.
+  proc insert_with_parent (p:&bstree_t) (parent:bstree_t) (elt:T)
+  {
+    proc aux (p:&bstree_t) (parent:bstree_t) {
+      match *p with
+      | #Empty => p <- bstree_t (elt,parent);
+      | Node q =>
+        if elt < q*.elt do
+          aux q.left (*p);
+        elif elt > q*.elt do
+          aux q.right (*p);
+        done //otherwise it's already in there
+      endmatch;
+    }
+    aux p parent;
+  }
+  proc insert (p:&bstree_t) (elt:T) => insert_with_parent p Empty elt;
+
+#line 798 "/Users/skaller/felix/src/packages/trees.fdoc"
+  ctor bstree_t  (f:1->opt[T]) = {
+    var x = Empty;
+    var ff = f;
+    proc aux () {
+      match #ff with
+      | Some y => insert &x y; aux();
+      | #None => ;
+      endmatch;
+    }
+    aux();
+    return x;
+  }
+
+#line 814 "/Users/skaller/felix/src/packages/trees.fdoc"
+  gen iterator (x:bstree_t) () : opt[T] =
+  {
+    match x with
+    | #Empty => return None[T];
+    | Node p =>
+      var ff = iterator p*.left; // closure for generator
+    left:>
+      var elt_opt = #ff;
+      match elt_opt with
+      | #None => ;
+      | Some v =>
+        yield elt_opt;
+        goto left;
+      endmatch;
+
+      yield Some (p*.elt);
+
+      ff = iterator p*.right;
+    right:>
+      elt_opt = #ff;
+      match elt_opt with
+      | #None => return None[T];
+      | Some _ =>
+        yield elt_opt;
+        goto right;
+      endmatch;
+    endmatch;
+  }
+#line 844 "/Users/skaller/felix/src/packages/trees.fdoc"
+  instance Set[bstree_t,T] {
+    fun \in (elt:T, container:bstree_t) =>
+      match find container elt with
+      | #Empty => false
+      | _ => true
+      endmatch
+    ;
+  }
+  inherit Set[bstree_t,T];
+
+#line 856 "/Users/skaller/felix/src/packages/trees.fdoc"
+  instance Container[bstree_t, T] {
+    // not tail rec
+    fun len (x:bstree_t) =>
+      let fun aux (x:bstree_t) (sum:size) =>
+        match x with
+        | #Empty => sum
+        | Node p =>
+          aux p*.left (aux p*.right (sum+1uz))
+        endmatch
+      in aux x 0uz
+    ;
+
+    // faster than counting then comparing to 0
+    fun empty: bstree_t -> bool =
+      | #Empty => true
+      | _ => false
+    ;
+
+  }
+  inherit Container[bstree_t,T];
+
+#line 880 "/Users/skaller/felix/src/packages/trees.fdoc"
+  // deletes the first copy of the element found
+  proc delete_element (p:&bstree_t) (elt:T)
+  {
+    proc aux (p:&bstree_t) {
+      match *p with
+      | #Empty => ; // not found, nothing to do
+      | Node q =>
+        if elt == q*.elt do // found it
+          var par = q*.parent;
+          match q*.left, q*.right with
+          // no kids
+          | #Empty, Empty => p <- Empty;
+
+          // right kid only
+          | #Empty, Node child =>
+            p <- q*.right;
+            child.parent <-par;
+
+          // left kid only
+          | Node (child) , Empty =>
+            p <- q*.left;
+            child.parent <- par;
+
+          // two kids
+          // overwrite elt with min elt of right kid
+          // then delete that elt's original node
+          // which is the leftmost descendant of the right kid
+
+          | _, Node child =>
+            match min q*.right with
+            | #Empty => assert false;
+            | Node k =>
+              var m = k*.elt;
+              q.elt <- m;
+              delete_element q.right m;
+                // this looks nasty and is poor syle but
+                // it's not recursive because the element
+                // is a leaf and has no children
+            endmatch;
+          endmatch;
+        elif elt < q*.elt do
+          aux q.left;
+        else
+          aux q.right;
+        done
+      endmatch;
+    }
+    aux p;
+  }
+
+} // class
+

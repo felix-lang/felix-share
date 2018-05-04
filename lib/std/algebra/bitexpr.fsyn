@@ -1,0 +1,19 @@
+#line 689 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax bitexpr
+{
+  //$ Bitwise or, left associative.
+  x[sbor_pri] := x[sbor_pri] "\|" x[>sbor_pri] =># "(Infix)";
+
+  //$ Bitwise xor, left associative.
+  x[sbxor_pri] := x[sbxor_pri] "\^" x[>sbxor_pri] =># "(Infix)";
+
+  //$ Bitwise exclusive and, left associative.
+  x[sband_pri] := x[sband_pri] "\&" x[>sband_pri] =># "(Infix)";
+
+  //$ Bitwise left shift, left associative.
+  x[sshift_pri] := x[sshift_pri] "<<" x[>sshift_pri] =># "(Infix)";
+
+  //$ Bitwise right shift, left associative.
+  x[sshift_pri] := x[sshift_pri] ">>" x[>sshift_pri] =># "(Infix)";
+}
+

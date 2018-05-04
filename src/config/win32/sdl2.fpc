@@ -1,0 +1,7 @@
+Generated_from: 3715 "/Users/skaller/felix/src/packages/sdl.fdoc"
+Name: SDL2
+Description: Simple Direct Media Layer 2.0
+cflags: /I\Users\skaller\Desktop\SDL2-2.0.3\include
+includes: '"SDL.h"'
+provides_dlib: /DEFAULTLIB:\Users\skaller\Desktop\SDL2-2.0.3\lib\x64\SDL2
+

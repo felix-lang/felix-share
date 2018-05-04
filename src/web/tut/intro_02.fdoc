@@ -1,0 +1,44 @@
+@h2 Combining bindings
+Felix allows you to combine bindings with functions and procedures.
+We will starting with chapter 1 bindings:
+@felix
+include "./intro_01";
+@expect
+hello world
+3
+mytrue
+@
+@h2 Felix procedures
+A Felix procedure is a way to combine Felix procedures and functions as well
+as bindings.
+@felix
+proc myprintln (x:myint) 
+{
+  myprint (x);
+  myendl();
+}
+myprintln (myadd (one,two));
+@expect
+3
+@
+Calls to Felix procedures can be though of as reducing to the
+calls in their definition, which in turn reduce, recursively,
+until the process bottoms out by reducing C++ bindings to C++.
+
+Thus you can think of Felix has a giant macro processor for C++,
+although unlike the C pre-processor, Felix has a powerful type
+system to help prevent errors and guide overloading.
+ 
+@h2 Felix functions
+A Felix function is a way to combine both other Felix functions and procedures
+and function and procedure bindings.
+For example:
+@felix
+fun mytwice (x:myint) => myadd (x,x);
+myprintln (mytwice (one)); 
+@expect
+2
+@
+There are more advanced form of these constructions, but we're not ready
+to introduce them yet.
+

@@ -1,0 +1,21 @@
+// config
+include "std/felix/config";
+include "std/felix/flx_profile";
+
+// Synchronous fibres and channels scheduler.
+include "std/felix/sync";
+
+// Convert Felix identifiers to legal C identifiers.
+include "std/felix/cident";
+
+// run time type information
+include "std/felix/rtti";
+
+// Garbage Collector Internals.
+include "std/felix/flx_gc";
+
+// serialisation
+include "std/felix/serialise";
+
+// Felix Package Management
+include "std/felix/serialise";

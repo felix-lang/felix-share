@@ -1,0 +1,13 @@
+Generated_from: 2417 "/Users/skaller/felix/src/packages/gc.fdoc"
+Name: flx_gc
+Platform: Win32
+Description: Felix default garbage collector (Windows)
+provides_dlib: /DEFAULTLIB:flx_gc_dynamic
+provides_slib: /DEFAULTLIB:flx_gc_static
+includes: '"flx_gc.hpp"'
+Requires: judy
+library: flx_gc
+macros: BUILD_FLX_GC
+Requires: judy flx_exceptions
+srcdir: src/gc
+src: .*\.cpp

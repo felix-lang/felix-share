@@ -1,0 +1,5 @@
+#line 168 "/Users/skaller/felix/src/packages/control.fdoc"
+syntax swapop
+{
+  sswapop := "<->" =># "'_swap";
+}

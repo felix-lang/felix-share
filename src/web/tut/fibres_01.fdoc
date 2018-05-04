@@ -1,0 +1,135 @@
+@title Fibres.
+@h1 Fibres and Channels
+Felix supports a powerful new programming paradigm which allows
+millions of lightweight, cooperative threads to exist concurrently
+and represent actors, monsters in a game, or other active processes.
+
+<em>Active programming</em> is the opposite of re-active programming. Active and
+re-active components can be combined. Reactive programming is good for
+small simple objects, meaning, objects with simple state.
+
+
+Active programming is better when objects have complex state because
+the stack can be used to encode part or all of the state.
+
+Active programming uses two constructions: fibres (also called felix threads
+or just f-threads), and synchronous channels, also called s-channels.
+F-threads exchange control by transfer of the control token along an s-channel,
+possibly along with some data.
+
+@h2 The model.
+Here is a simple model:
+<img src='/share/src/web/images/IMG_1287.jpg'>
+
+@h2 A more complex example.
+Best to show a real example of course!
+
+@felix
+proc client(x:ischannel[string]) {
+  while true do
+    line := read x;
+    println line;
+  done
+}
+
+proc server(x:oschannel[string]) {
+  for var i in 0 upto 9 do
+    write$ x,i.str;
+  done;
+}
+
+proc launch() {
+  inp,out:= mk_ioschannel_pair[string]();
+  spawn_fthread { client(inp); };
+  spawn_fthread { server (out); };
+}
+
+launch;
+println$ "Launched!";
+@
+
+In this example we implement a simple client/server application.
+Of course this could easily be rewritten in an ordinary coding style,
+but the active programming style offers a major advantage: the client
+and server code are entirely decoupled statically: they're linked only
+by a dynamically passed synchronous channel. 
+
+The client and server are ordinary procedures. The library function
+@{spawn_fthread} launches its argument as a new fibre, 
+which must be a procedure accepting no arguments: that's the 
+bit in the braces (which in turn calls the server or client).
+
+The client and server run <em>alternately</em> and <em>not concurrently</em>.
+Control is <em>exchanged</em> between the client and server by reading or
+writing to an @{schannel}.
+
+The way this works is: both the client and server are added to a list of
+fibres waiting to be resumed at their entry point. When the mainline
+fibre exits one of these is popped off the wait list and execution
+begins. It continues until the fibre reads or write to an schannel
+or terminates.
+
+Lets assume the server runs first. When the server does a write on
+the schannel, the system discovers there's no corresponding read,
+so it simply resumes the fibre on top of the wait list, which will
+be the client. The writer is attached to the schannel as a pending
+fibre.
+
+When the client does a read, it finds there is a writer waiting
+on the channel, so the writer is moved off the channel and put
+back on the wait list.
+
+The actual data transfer is always implemented by passing a pointer
+from the writer to the reader: this is usually a pointer to a heap
+copy of the data being written (rather than a pointer to the stack
+of the writer, since that may be modified or invalidated when the
+writer resumes).
+
+If the client runs first, the same kind of control exchange is
+performed. It makes no difference which one runs first: the first
+fibre to access the thread is suspended and the one first doing
+the corresponding input/output operation captures the data, if any,
+then moves the suspended fibre off the channel onto the wait list.
+
+It is possible for multiple fibres to write to or read from a channel
+before a corresponding read or write is executed. When that happens,
+one of the multiple waiting fibres is selected at random and its
+data captured and it is then put back on the wait list.
+
+It is also indeterminate which of the reader/write pair will be
+resumed first after the data transfer.
+
+You should note carefully that the transfer of data along the channel
+is not important: the key thing is that the transfer acts as a 
+synchronisation point.
+
+There is one further very important issue: what happens if a 
+read is performed and there's no writer around? Or similarly,
+if a write is performed and there's no reader?
+
+The answer is: nothing. Literally nothing. Fibres <em>cannot deadlock</em>
+in the sense that if one is stalled because the owners of the other end
+of the channel have completed, then the stalled procedure is no longer
+reachable and will be reaped by the garbage collector.
+
+It is therefore vital <em>not</em> to store the channels in, say,
+global variables, because that would make waiting fibres reachable.
+In other words, if a running or waiting fibre can access a channel,
+it could in theory complete the pending I/O operation .. even if it
+never does. In that case, the suspended fibre will wait until the
+last channel owner terminates.
+
+You should also note that control transfer by this mechanism
+is synchronous, that is, under program control. There is no possibility
+of pre-emption, so low level locks are not required. Of course high
+level interlocking of fibres is required by carefully desiging the
+system.
+
+A collection of fibres and channels is, in fact, a network,
+and acts very much like a collection of integrated circuits 
+connected with wires.
+
+It is this fact that is the key to the power of active programming:
+the "chips" can be designed and programmed independently and
+connected together dynamically to make a circuit.
+

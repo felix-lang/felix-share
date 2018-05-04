@@ -1,0 +1,18 @@
+#line 34 "/Users/skaller/felix/src/packages/core_scalar_types.fdoc"
+
+include "std/scalar/ctypedefs";
+
+include "std/scalar/address";
+include "std/scalar/memory";
+include "std/scalar/bool";
+include "std/scalar/int";
+include "std/scalar/real";
+include "std/scalar/number";
+include "std/scalar/char";
+
+include "plat/float";
+include "std/scalar/float_format";
+include "std/scalar/float_math";
+include "std/scalar/quaternion";
+
+

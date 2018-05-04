@@ -1,0 +1,5 @@
+Generated_from: 219 "/Users/skaller/felix/src/packages/rparse.fdoc"
+Description: Respectful Parser, binary edition
+Location: Part of the standard library
+provides_slib: /DEFAULTLIB:librparse_static
+provides_dlib: /DEFAULTLIB:librparse_dynamic

@@ -1,0 +1,18 @@
+#line 15 "/Users/skaller/felix/src/packages/botan.fdoc"
+library Botan { class Rng
+{
+  requires package "botan_rng", package "botan_system_rng";
+  type RandomNumberGenerator = "Botan::RandomNumberGenerator*";
+  fun System_RNG: 1 -> RandomNumberGenerator = "new Botan::System_RNG()";
+  proc add_entropy: RandomNumberGenerator * +byte * size = "$1->add_entropy($2,$3);";
+  proc randomize_with_input:
+    RandomNumberGenerator * +byte * size * +byte * size=
+    "$1->add_entropy($2,$3,$4,$5);"
+  ;
+  proc randomize_with_ts_input: RandomNumberGenerator * +byte * size =
+    "$1->randomize_with_ts_input($2,$3);"
+  ;
+  proc randomize: RandomNumberGenerator * +byte * size =
+    "$1->randomize_with_input($2,$3);"
+  ;
+}}

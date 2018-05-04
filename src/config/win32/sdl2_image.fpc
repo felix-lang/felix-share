@@ -1,0 +1,7 @@
+Generated_from: 3723 "/Users/skaller/felix/src/packages/sdl.fdoc"
+Name: SDL2_image
+Description: Simple Direct Media Layer 2.0: image loader
+cflags: /I\Users\skaller\Desktop\SDL2_image-2.0.0\include
+includes: '"SDL_image.h"'
+provides_dlib: /DEFAULTLIB:\Users\skaller\Desktop\SDL2_image-2.0.0\lib\x64\SDL2_image
+

@@ -1,0 +1,4 @@
+Generated_from: 157 "/Users/skaller/felix/src/packages/botan.fdoc"
+Requires: botan
+includes: '"botan/system_rng.h"'
+cflags: -I/usr/local/include/botan-2.0

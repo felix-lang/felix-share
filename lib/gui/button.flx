@@ -1,0 +1,180 @@
+#line 1025 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiButton
+{
+  union button_state_t =
+    | Up       // ready
+    | Down     // being clicked
+    | Disabled // inactive
+    | Mouseover // ready and mouse is over
+  ;
+
+  union button_action_t =
+    | NoAction
+    | ClickAction of string
+  ;
+
+  interface button_model_t
+  {
+    get_state: 1 -> button_state_t;
+    set_state: button_state_t -> 0;
+    get_tag: 1 -> string;
+  }
+
+  object ButtonModel
+    (var tag: string, init_state:button_state_t)
+    implements button_model_t
+  =
+  {
+    var state = init_state;
+    method fun get_state() => state;
+    method proc set_state (s:button_state_t) => state = s;
+    method fun get_tag () => tag;
+  }
+
+  typedef button_colour_scheme_t =
+  (
+    label_colour: colour_t,
+    bg_colour: colour_t,
+    top_colour: colour_t,
+    left_colour: colour_t,
+    bottom_colour: colour_t,
+    right_colour: colour_t
+  );
+
+  typedef button_skin_t =
+  (
+    up: button_colour_scheme_t,
+    down: button_colour_scheme_t,
+    disabled: button_colour_scheme_t,
+    mouseover: button_colour_scheme_t
+  );
+
+  interface button_display_t {
+    display: 1 -> 0;
+    get_client_rect: 1 -> rect_t;
+    get_label : 1 -> string;
+    get_tag: 1 -> string;
+  }
+
+  object ButtonDisplay (b:button_model_t)
+  (
+    w:window_t, // change to surface later
+    font:font_t,
+    label:string,
+    tag: string, // note: NOT the same as the button's tag!
+    skin : button_skin_t,
+    coords: rect_t,
+    origin: point_t
+   )
+   implements button_display_t =
+   {
+     // NOTE: the tag must be unique per button-display on each window.
+     // it is used to *remove* the drawing instructions from the window
+     // for the previous button state prior to adding new instructions.
+     // Dont confuse with the label (which might change per display)
+     // or the button state tag (which is not enough if the same button state
+     // drives two displays on the same window).
+     method fun get_tag () => tag;
+
+     method fun get_client_rect () => coords;
+
+     method fun get_label () => label;
+     method proc display()
+     {
+      var state = b.get_state ();
+      var scheme = match state with
+        | #Up => skin.up
+        | #Down => skin.down
+        | #Disabled => skin.disabled
+        | #Mouseover => skin.mouseover
+        endmatch
+      ;
+      w.remove tag;
+      var left_x = coords.x;
+      var right_x = coords.x + coords.w - 1;
+      var top_y = coords.y;
+      var bottom_y = coords.y + coords.h - 1;
+      var origin_x = origin.x;
+      var origin_y = origin.y;
+
+      // top
+      w.add$ mk_drawable tag draw_line (scheme.top_colour, left_x - 2,top_y - 2,right_x + 2, top_y - 2) ;
+      w.add$ mk_drawable tag draw_line (scheme.top_colour, left_x - 1,top_y - 1,right_x + 1, top_y - 1);
+      // left
+      w.add$ mk_drawable tag draw_line (scheme.left_colour, left_x - 2,top_y - 2,left_x - 2, bottom_y + 2);
+      w.add$ mk_drawable tag draw_line (scheme.left_colour, left_x - 1,top_y - 1,left_x - 1, bottom_y + 1);
+      // right
+      w.add$ mk_drawable tag draw_line (scheme.right_colour, right_x + 2,top_y - 2,right_x + 2, bottom_y + 2);
+      w.add$ mk_drawable tag draw_line (scheme.right_colour, right_x + 1,top_y - 1,right_x + 1, bottom_y + 1);
+      // bottom
+      w.add$ mk_drawable tag draw_line (scheme.bottom_colour, left_x - 1,bottom_y + 1,right_x + 1, bottom_y + 1);
+      w.add$ mk_drawable tag draw_line (scheme.bottom_colour, left_x - 2,bottom_y + 2,right_x + 2, bottom_y + 2);
+
+      w.add$ mk_drawable tag fill(SDL_Rect (left_x, top_y, right_x - left_x + 1, bottom_y - top_y + 1), scheme.bg_colour);
+      w.add$ mk_drawable tag FlxGuiSurface::write (origin_x, origin_y, font, scheme.label_colour, label);
+    } // draw
+    display();
+  } //button
+
+chip button_controller
+(
+  bm: button_model_t,
+  bd: button_display_t
+)
+connector but
+  pin ec: %<event_t
+  pin response: %>button_action_t
+{
+  bd.display();
+  var run = true;
+  var e = read but.ec;
+  while run do
+    match e with
+    | MOUSEMOTION mm =>
+      var x,y = mm.x,mm.y; //int32
+      if SDL_Point (x.int,y.int) \in bd.get_client_rect () do
+        //println$ "Motion in client rect of button " + bd.get_label();
+        match bm.get_state () with
+        | #Up => bm.set_state Mouseover; bd.display(); // Enter
+        | _ => ;
+        endmatch;
+      else
+        match bm.get_state () with
+        | #Mouseover => bm.set_state Up; bd.display(); // Leave
+        | #Down => bm.set_state Up; bd.display(); // Leave
+        | _ => ;
+        endmatch;
+      done
+      write$ but.response, NoAction;
+
+    | MOUSEBUTTONDOWN mbd =>
+      x,y = mbd.x,mbd.y; //int32
+      if SDL_Point (x.int,y.int) \in bd.get_client_rect () do
+        //println$ "Button down in client rect of button " + bd.get_label();
+        bm.set_state Down; bd.display();
+      done
+      write$ but.response, NoAction;
+
+    | MOUSEBUTTONUP mbu =>
+      x,y = mbu.x,mbu.y; //int32
+      if SDL_Point (x.int,y.int) \in bd.get_client_rect () do
+        //println$ "Button up in client rect of button " + bd.get_label();
+        bm.set_state Mouseover; bd.display();
+        write$ but.response, ClickAction #(bm.get_tag);
+      else
+        bm.set_state Up; bd.display();
+        write$ but.response, NoAction;
+      done
+    | WINDOWEVENT we when we.event == SDL_WINDOWEVENT_LEAVE.uint8  =>
+      bm.set_state Up; bd.display();
+      write$ but.response, NoAction;
+
+    | _ =>
+      write$ but.response, NoAction;
+    endmatch;
+    e = read but.ec;
+  done
+
+}
+
+} // class

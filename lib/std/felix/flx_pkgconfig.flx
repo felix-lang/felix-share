@@ -1,0 +1,11 @@
+#line 600 "/Users/skaller/felix/src/packages/flx_pkgconfig.fdoc"
+include "std/felix/flx_pkgconfig_core";
+include "std/felix/flx_pkgconfig_query_interface";
+include "std/felix/flx_pkgconfig_query";
+
+class FlxPkgConfig
+{
+  inherit FlxPkgConfig_core;
+  inherit FlxPkgConfigQuery_interface;
+  inherit FlxPkgConfig_query;
+}

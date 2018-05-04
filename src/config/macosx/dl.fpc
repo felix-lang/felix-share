@@ -1,0 +1,4 @@
+Generated_from: 1294 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+Name: dl
+Description: dynamic loading support
+includes: '<dlfcn.h>'

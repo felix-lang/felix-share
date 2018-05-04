@@ -1,0 +1,60 @@
+#line 1886 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/line_buffer_display_controller_interface";
+
+class FlxGuiLineBufferDisplayController
+{
+object line_buffer_display_controller
+(
+  w:window_t, tag:string, f:font_t, c:colour_t, bg:colour_t,
+  x: int, y:int, b:line_buffer_interface
+)
+implements line_buffer_display_controller_interface =
+{
+  method fun get_tag() => tag;
+  method fun get_client_rect () => bounding_box (f,x,y,b.get());
+  method fun get_char_width () = {
+    var minx:int; var maxx:int; var miny:int; var maxy:int; var advance:int;
+    C_hack::ignore$ TTF_GlyphMetrics(f,"m".char.ord.uint16,&minx, &maxx, &miny, &maxy, &advance);
+    return advance;
+  }
+
+  var has_focus = false;
+  method proc set_focus_gained () => has_focus = true;
+  method proc set_focus_lost () => has_focus = false;
+
+  method proc display ()
+  {
+    var nullRect = C_hack::null[SDL_Rect];
+    var s = #(b.get);
+//  println$ "Edit box = '" + s + "'";
+    var text_rendered = TTF_RenderText_Blended(f,s,c);
+    var bbox = bounding_box (f,x,y,s);
+//println$ "Bounding box for ("+x.str+","+y.str+")=("+bbox.x.str+","+bbox.y.str+","+bbox.w.str+","+bbox.h.str+")";
+    w.remove tag;
+    w.add$ mk_drawable tag fill (bbox,bg);
+    var viewport: SDL_Rect;
+    var minx:int; var maxx:int; var miny:int; var maxy:int; var advance:int;
+    C_hack::ignore$ TTF_GlyphMetrics(f,"m".char.ord.uint16,&minx, &maxx, &miny, &maxy, &advance);
+
+    viewport&.x <- bbox.x + min(minx,0) + 2;
+    viewport&.y <- bbox.y + 2; // actually y + font.ascent + 2
+    viewport&.h <-  bbox.h;
+//println$ "Viewpos for ("+x.str+","+y.str+")=("+viewport.x.str+","+viewport.y.str;
+    w.add$ mk_drawable tag blit (viewport.x, viewport.y, text_rendered);
+    //SDL_FreeSurface text_rendered;
+    if has_focus do
+      var charwidth =
+        #{
+          var minx:int; var maxx:int; var miny:int; var maxy:int; var advance:int;
+          C_hack::ignore$ TTF_GlyphMetrics(f,"m".char.ord.uint16,&minx, &maxx, &miny, &maxy, &advance);
+          return advance;
+        }
+      ;
+      var curpos = x + charwidth * #(b.get_pos);
+      w.add$ mk_drawable tag draw_line(red,curpos,viewport.y - 1,curpos,viewport.y + viewport.h - 2);
+    done
+  }
+  display();
+}
+}
+

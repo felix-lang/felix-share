@@ -1,0 +1,65 @@
+#line 2056 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiLineEditor
+{
+chip line_edit
+  (b:line_buffer_interface)
+  (d:line_buffer_display_controller_interface)
+  connector lin
+    pin ec: %<event_t
+{
+  //println$ "Line buffer running";
+  d.display();
+  var run = true;
+  var e : event_t = read lin.ec;
+  while run do
+    match e.type.SDL_EventType with
+    | $(SDL_WINDOWEVENT) =>
+      match e.window.event.SDL_WindowEventID with
+      | $(SDL_WINDOWEVENT_FOCUS_GAINED) => d.set_focus_gained (); d.display();
+      | $(SDL_WINDOWEVENT_FOCUS_LOST) => d.set_focus_lost (); d.display();
+      | $(SDL_WINDOWEVENT_RESIZED) =>  d.display();
+      | _ => ;
+      endmatch;
+
+    | $(SDL_MOUSEBUTTONDOWN) =>
+      var x,y = e.button.x,e.button.y; //int32
+      if SDL_Point (x.int,y.int) \in d.get_client_rect () do
+        var w = d.get_char_width();
+        var inchar = (x.int - (d.get_client_rect()).x + w / 2) / w;
+        //println$ "Button down in client rect of line edit " + d.get_tag() + ", pos = " + inchar.str;
+        b.set_pos inchar;
+        d.display();
+      done
+
+
+    | $(SDL_KEYDOWN) =>
+      var vkey = e.key.keysym.sym;
+      match vkey with
+      | $(SDLK_LEFT) => b.mv_left (); d.display();
+      | $(SDLK_RIGHT) => b.mv_right (); d.display();
+      | $(SDLK_HOME) => b.mv_start (); d.display();
+      | $(SDLK_END) => b.mv_end (); d.display();
+      | $(SDLK_DELETE) => b.del_right(); d.display();
+      | $(SDLK_BACKSPACE) => b.del_left(); d.display();
+      | $(SDLK_RETURN) => b.mv_start(); d.display();
+      | $(SDLK_TAB) => b.mv_start(); d.display();
+      | _ => ;
+      endmatch;
+    | $(SDL_TEXTINPUT) =>
+      var text_buffer : +char = e.text.text;
+      var ch = text_buffer . 0;
+      b.ovr ch;
+      d.display();
+
+    // NOTE: not an actual SDL_QUIT!
+    // We just need something to terminate.
+    // Should be sent on window close actually.
+    | $(SDL_QUIT) =>
+      run = false;
+    | _ => ;
+    endmatch;
+    e = read lin.ec;
+  done
+} //chip
+} //class
+

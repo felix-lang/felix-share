@@ -1,0 +1,6 @@
+#line 13 "/Users/skaller/felix/src/packages/core_type_constructors.fdoc"
+
+// Core types and type classes
+
+typedef any = any;
+

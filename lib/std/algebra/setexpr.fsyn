@@ -1,0 +1,12 @@
+#line 153 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax setexpr
+{
+  cmp := "in" =># '(nos "\\in")';
+  cmp := "\in" =># "(nos _1)";
+  cmp := "\notin" =># '(nos _1)';
+  cmp := "\owns" =># '(nos _1)';
+
+  x[ssetunion_pri] := x[ssetunion_pri] "\cup" x[>ssetunion_pri] =># "(Infix)" note "setunion";
+  x[ssetintersection_pri] := x[ssetintersection_pri] "\cap" x[>ssetintersection_pri] =># "(Infix)" note "setintersection";
+}
+

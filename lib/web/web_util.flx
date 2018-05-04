@@ -1,0 +1,12 @@
+#line 43 "/Users/skaller/felix/src/packages/web.fdoc"
+class WebUtil {
+
+  fun parse_attribute_list(lst:list[string]):list[string^2] =>
+    map (fun (s:string) => match split_first(s,"=") with
+                             |Some (i,j) => (strip i),(strip j)
+                             |_       => "",""
+                           endmatch ) lst;
+
+
+
+}

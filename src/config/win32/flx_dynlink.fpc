@@ -1,0 +1,11 @@
+Generated_from: 1318 "/Users/skaller/felix/src/packages/dynlink.fdoc"
+Name: flx_dynlink
+Description: Felix Dynamic loading support
+provides_dlib: /DEFAULTLIB:flx_dynlink_dynamic
+provides_slib: /DEFAULTLIB:flx_dynlink_static
+Requires: dl flx_exceptions flx_gc flx_strutil
+library: flx_dynlink
+includes: '"flx_dynlink.hpp"'
+macros: BUILD_DYNLINK
+srcdir: src/dynlink
+src: .*\.cpp

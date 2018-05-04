@@ -1,0 +1,76 @@
+@h1 Variables
+Felix provides a way to create variables using the @{var} binder.
+Again using the bindings from the first and second chapters:
+@felix 
+include './intro_02';
+@expect
+hello world
+3
+mytrue
+3
+2
+@
+Note that since {intro_02.flx} includes {intro_01.flx} both get
+included by {include './intro_02';}.
+
+@h2 The <code>var</code> binder
+We will now show you the @{var} binder.
+We'll repeat the code, using variables:
+@felix
+var hello-world = mycat (mycat (hello, white), world); 
+myprint (hello-world); myendl();
+
+// show 1 + 2, should be 3
+var thre = (myadd (one, two));
+myprintln (thre);
+
+// basic axiom check
+var onetwo = myadd (one, two);
+var twoone = myadd (two, one); 
+var ok = myeq (onetwo, twoone);
+
+myprint (ok); myendl();
+@expect
+hello world
+3
+mytrue
+@
+Note the spelling {hello-world}. Felix allows hyphens in identifiers.
+So be careful not to write {x-1} and expect that to be considered
+a subtraction!
+
+@h2 Simple Assignment
+Variables can be assigned new values.
+For example:
+@felix
+var x = one;
+myprintln (x);
+x = two;
+myprintln (x);
+@expect
+1
+2
+@
+
+The @{var} binder requires either a type or an initialiser
+or both. Here's an example:
+@felix
+var y : myint = two;
+var z = myadd(y,one);
+var u : myint;
+u = myadd(z,one);
+myprintln (u);
+@expect
+4
+@
+The first line shows a variable initialised by @{two}
+and the type @{myint} given. This serves and an extra
+check on the type.
+
+On the second line we allow the type of the RHS expression
+to determine the variable type.
+
+On the third line, we have an uninitialised variable
+of type @{myint}. Use of variables before a value is stored
+in them may have unpredictable results.
+

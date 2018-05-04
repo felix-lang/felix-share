@@ -1,0 +1,15 @@
+#line 19 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+
+// pthreads (portable)
+include "std/pthread/pthread";
+//include "std/pthread/pchannels";
+include "std/pthread/mutex";
+//include "std/pthread/ts_counter";
+//include "std/pthread/ts_bound_queue";
+//include "std/pthread/semaphore";
+//include "std/pthread/condition_variable";
+//include "std/pthread/ppipe";
+//include "std/pthread/forkjoin";
+//include "std/pthread/atomic";
+//include "std/pthread/threadpool";
+

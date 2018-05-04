@@ -1,0 +1,61 @@
+#line 606 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/__init__";
+class FlxGuiDrawChain
+{
+  open FlxGui;
+  interface drawchain_t {
+    draw: surface_t -> 0;
+    remove: string -> 0;
+    add: drawable_t -> 0;
+    len: 1 -> size;
+    get_drawables : 1 -> darray[drawable_t];
+  }
+
+  object drawchain() implements drawchain_t =
+  {
+    var drawables = darray[drawable_t] ();
+    method fun len () => drawables.len;
+    method fun get_drawables () => drawables;
+
+    method proc draw (surf: surface_t)
+    {
+//println$ "----";
+      for d in drawables do
+        d.draw surf;
+//println$ "Drawn " + d.get_tag() + " " + #(d.get_z).str;
+      done
+    }
+
+    method proc remove (tag:string)
+    {
+//println$ "remove " + tag;
+      var i = 0;
+      while i < drawables.len.int do
+        if drawables.i.get_tag () == tag do
+          erase (drawables, i);
+        else
+          ++i;
+        done
+      done
+    }
+
+    method proc add (d:drawable_t)
+    {
+      var z = d.get_z ();
+      var i = 0;
+    next:>
+      if i == drawables.len.int do
+        push_back (drawables, d);
+      else
+        if drawables.i.get_z() > z do
+          insert(drawables, i, d);
+        else
+          ++i;
+          goto next;
+        done
+      done
+    }
+  }
+}
+
+

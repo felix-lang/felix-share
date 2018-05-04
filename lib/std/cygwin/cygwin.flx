@@ -1,0 +1,41 @@
+#line 1665 "/Users/skaller/felix/src/packages/toolchain.fdoc"
+class Cygwin
+{
+  requires package "cygwin";
+
+  // outputs absolute filenames: src,dst
+  private gen p_cygwin_to_win32: +char * +char * size -> int =
+     "cygwin_conv_path(CCP_POSIX_TO_WIN_A || CCP_ABSOLUTE,$1,$2,$3)"
+  ;
+  private gen p_win32_to_cygwin: +char * +char * size -> int =
+    "cygwin_conv_path(CCP_WIN_TO_POSIX)A || CCP_ABSOLUTE,$1,$2,$3)"
+  ;
+
+  // This function should ALWAYS work
+  fun cygwin_to_win32 (var s:string) =
+  {
+     var outbuf : +char;
+     var psiz = p_cygwin_to_win32 (s.cstr,outbuf,0uz);
+     outbuf = array_alloc[char] psiz;
+     var err = p_cygwin_to_win32 (s.cstr,outbuf,psiz.size);
+     assert err == 0; // hackery!
+     var t = string outbuf;
+     free outbuf;
+     return t;
+  }
+
+  // This function has two kinds of output:
+  // if the win32 filename is inside C:/cygwin we get name relative to /
+  // if the filename is outside, we get /cygdrive/driveletter/rest-of-path
+  fun win32_to_cygwin(var s:string) =
+  {
+     var outbuf : +char;
+     var psiz = p_win32_to_cygwin(s.cstr,outbuf,0uz);
+     outbuf = array_alloc[char] psiz;
+     var err = p_win32_to_cygwin(s.cstr,outbuf,psiz.size);
+     assert err == 0; // hackery!
+     var t = string outbuf;
+     free outbuf;
+     return t;
+  }
+}

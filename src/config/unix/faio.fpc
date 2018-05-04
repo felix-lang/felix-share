@@ -1,0 +1,12 @@
+Generated_from: 665 "/Users/skaller/felix/src/packages/faio.fdoc"
+Name: faio
+Description: Asynchronous I/O support
+provides_dlib: -lfaio_dynamic
+provides_slib: -lfaio_static
+includes: '"faio_posixio.hpp"'
+Requires: flx_async flx_pthread demux flx flx_gc
+library: faio
+macros: BUILD_FAIO
+srcdir: src/faio
+src: faio_(timer|posixio)\.cpp
+headers: faio_(drv|timer|posixio)\.hpp

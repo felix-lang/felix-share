@@ -1,0 +1,144 @@
+@title Basic Line Editing
+@felix
+include "gui/__init__";
+open FlxGui;
+
+println$ "Basic Edit Field Test";
+
+var clock = Faio::mk_alarm_clock();
+
+// Initialise the SDL system (SDL + TTF + IMAGE)
+FlxGui::init();
+
+var font_name = dflt_mono_font();
+var font : font_t = get_font(font_name, 12);
+var lineskip = get_lineskip font;
+
+proc mk_field 
+(
+  window:window_t, x:int, y:int, 
+  font:font_t, colour: colour_t, bgcolour:colour_t, 
+  dflt:string,
+  ed: &line_buffer_interface,
+  dc: &line_buffer_display_controller_interface,
+  o:&oschannel[event_t]
+) 
+{
+  var tag = dflt;
+  println$ "mk_field ("+x.str +"," + y.str+")="+tag;
+  var editor = line_buffer (dflt.len.int, dflt);
+  dc <- line_buffer_display_controller (window,tag,font,colour,bgcolour,x,y,editor);
+  dc*.display();
+  var ich,och = #(mk_ioschannel_pair[event_t]);
+
+  device medit = line_edit editor (*dc);
+  circuit
+    wire ich to medit.ec
+  endcircuit
+
+  println$ "mkfield: controller spawned";
+  ed <- editor;
+  o <- och;
+}
+
+// make an event handler for our window
+chip ehandler 
+(
+  fields: varray[oschannel[event_t] * line_buffer_display_controller_interface] 
+) 
+connector pins
+  pin input: %<event_t
+{
+  println$ "Window event handler running";
+  var selected_field = 0;
+  var run = true;
+  var ev2: SDL_Event;
+  while run do
+    var ev: event_t = read pins.input;
+    //if ev.type.SDL_EventType != SDL_MOUSEMOTION do
+    //  println$ "  WINDOW specific EVENT: " + ev.window.event.SDL_WindowEventID.str;
+    //done
+    match ev with
+    | KEYDOWN kd when kd.keysym.sym \in (SDLK_TAB, SDLK_RETURN) =>
+      var sel :SDL_Event;
+      &sel.type <- SDL_WINDOWEVENT.uint32;
+      &sel.window.event <- SDL_WINDOWEVENT_FOCUS_LOST.uint8;
+      write$ fields.selected_field.0,sel;
+      selected_field = (selected_field + 1) % fields.len.int;
+      &sel.window.event <- SDL_WINDOWEVENT_FOCUS_GAINED.uint8;
+      write$ fields.selected_field.0,sel;
+    | MOUSEBUTTONDOWN mbd =>
+      for i in 0 ..< fields.len.int do
+        var d = fields.i.1;
+        var x,y = mbd.x, mbd.y;
+        if SDL_Point (x.int, y.int) \in d.get_client_rect() do
+          //println$ "[Evt handler] Button down in client rect of line edit " + d.get_tag();
+          ev2&.type <- SDL_WINDOWEVENT.uint32;
+          ev2&.window.event <- SDL_WINDOWEVENT_FOCUS_GAINED.uint8;
+          write$ fields.i.0, ev2;
+          write$ fields.i.0, ev;
+          selected_field = i;
+        else
+          ev2&.type <- SDL_WINDOWEVENT.uint32;
+          ev2&.window.event <- SDL_WINDOWEVENT_FOCUS_LOST.uint8;
+          write$ fields.i.0,ev2; 
+        done
+      done
+    | _ =>
+      write$ fields.selected_field.0, ev;
+    endmatch;
+    run = ev.window.event.SDL_WindowEventID != SDL_WINDOWEVENT_CLOSE ;
+  done
+  println$ "Terminating window event processing loop";
+}
+
+ 
+begin
+  //create a window manager
+  var wm = window_manager();
+
+  // create a window
+  var w1 = create_resizable_window("Felix:gui_07_editfield_01",100,100,400,400);
+  w1.add$ mk_drawable FlxGui::clear lightgrey;
+  w1.add$ mk_drawable FlxGui::write (100,10,font,black,"Basic Field Edit Test");
+  w1.update();
+  w1.show();
+
+  var ch1: oschannel[event_t]; 
+  var ed1: line_buffer_interface; 
+  var dc1: line_buffer_display_controller_interface;
+  mk_field (w1, 50, 60, font, black, white, "EDITFIELD ONE", &ed1, &dc1, &ch1);
+  
+  var ch2: oschannel[event_t]; 
+  var ed2: line_buffer_interface;
+  var dc2: line_buffer_display_controller_interface; 
+  mk_field (w1, 50, 120, font, black, white, "EDITFIELD TWO", &ed2, &dc2, &ch2);
+
+  var ch3: oschannel[event_t]; 
+  var ed3: line_buffer_interface; 
+  var dc3:line_buffer_display_controller_interface; 
+  mk_field (w1, 50, 180, font, black, white, "EDITFIELD THREE", &ed3, &dc3, &ch3);
+
+  var fields = varray[oschannel[event_t] * line_buffer_display_controller_interface] 
+    ((ch1, dc1), (ch2,dc2), (ch3, dc3))
+  ;
+
+  // create a window controller for our window
+  var wc1 = window_controller (w1, ehandler fields);
+
+  // attach controller to window manager
+  var wno = wm.add_window wc1;
+
+  // USE variable wno or Felix will elide the call!
+  println$ "Window number " + wno.str;
+
+  wm.run_with_timeout 10.0;
+
+  println$ "ED1='"+ed1.get()+ "'";
+  println$ "ED2='"+ed2.get()+ "'";
+  println$ "ED3='"+ed3.get()+ "'";
+
+  println$ "gui_07, quitting";
+end
+
+

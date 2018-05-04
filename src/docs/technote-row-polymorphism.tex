@@ -1,0 +1,393 @@
+\documentclass{article}
+\usepackage{color}
+\definecolor{bg}{rgb}{0.95,0.95,0.95}
+\definecolor{emphcolor}{rgb}{0.5,0.0,0.0}
+\newcommand{\empha}{\bf\color{emphcolor}}
+\usepackage{parskip}
+\usepackage{minted}
+\usepackage{caption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{makeidx}
+\makeindex
+\usemintedstyle{friendly}
+\setminted{bgcolor=bg,xleftmargin=20pt}
+\usepackage{hyperref}
+\hypersetup{pdftex,colorlinks=true,allcolors=blue}
+\usepackage{hypcap}
+\newcommand*{\fullref}[1]{\hyperref[{#1}]{\autoref*{#1} \nameref*{#1}}}
+\DeclareMathOperator{\quot}{div}
+\DeclareMathOperator{\rmd}{rmd}
+\title{Row Polymorphism}
+\author{John Skaller}
+\begin{document}
+\maketitle
+\section{Records}
+Felix has structurally typed records as illustrated below:
+
+\begin{minted}{felix}
+var r : (a:int,b:string) = (a=1,b="Hello");
+println$ r._strr;
+\end{minted}
+
+The order of the fields fields with different names
+is irrelevant.
+
+The generic \verb%_strr% can be used to convert a record
+to a string, provided values of the field types can also
+be converted, either with \verb%_strr% or \verb%str%.
+
+\subsection{Named value projections}
+The names of the fields can be used as projections:
+
+\begin{minted}{felix}
+var i = a r;
+var s = r.b;
+\end{minted}
+
+Stand alone value projections can be specified like:
+
+\begin{minted}{felix}
+var p = a of (a:int,b:string);
+var i = p r;
+\end{minted}
+
+\subsection{Pointer projections}
+Pointer projections are also supported:
+
+\begin{minted}{felix}
+var pi : &int = &r.a;
+var ps : &string = r&.b;
+var i = *pi;
+var s = *ps;
+var p = a of &(a:int,b:string);
+var i2 = *(p &r);
+\end{minted}
+
+\subsection{Repeated field names}
+Record field names may be repeated:
+
+\begin{minted}{felix}
+var rr : (a:int,a:double,a:int,b:string)
+  = (a=1,a=2.3,a=4L,b="Hello")
+;
+\end{minted}
+
+In this case projections refer to the leftmost field of
+the given name. The order of fields with the same name
+matters.
+
+\subsection{Blank field names}
+One can also use blank field names. The grammar allows the name 
+\verb%n""% to be used. Alternatively, the name can be omitted,
+or both the name and \verb%=% sign can be omitted, except for
+the first field:
+
+
+\begin{minted}{felix}
+var x = (a=1,=2,n""=3);
+println$ x._strr;
+\end{minted}
+
+\subsection{Tuples}
+If all the field names are blank, you can also omit the \verb%=% sign
+from the first entry, and, if precedence allows, the parentheses:
+
+\begin{minted}{felix}
+var x : int * int * string = 1,2,"hello";
+println$ x._strr;
+\end{minted}
+
+in which case the record called a tuple.  Note the distinct
+type syntax using n-fix operator \verb%*%. 
+
+\subsection{Tuple value projections}
+
+Plain decimal integer
+literals can be used for tuple projections:
+
+\begin{minted}{felix}
+var x : int * int * string = 1,2,"hello";
+println$ x.1;
+\end{minted}
+
+Standalone tuples projections are denoted like:
+
+\begin{minted}{felix}
+var x : int * int * string = 1,2,"hello";
+var prj1 = proj 1 of (int * int * string);
+println$ prj1 x;
+\end{minted}
+
+\subsection{Tuple pointer projections}
+Since tuples are a special case of records we
+also have pointer projections.
+
+\begin{minted}{felix}
+var x = 1,2,"Hello";
+var px = &x;
+var p2 = px . 1;
+var two = *ps;
+\end{minted}
+
+\subsection{Arrays}
+If the types of a tuple are all the same, it is called an array:
+
+\begin{minted}{felix}
+var x : int ^ 3 = 1,2,3;
+println$ x._strr;
+\end{minted}
+
+\subsection{Array Value projections}
+In this case the projections can be either an integer expression,
+or an expression of the type of the array index:
+
+\begin{minted}{felix}
+var x : int ^ 3 = 1,2,3;
+var one = 0 x;
+var two = x.1;
+var three = x.(case 2 of 3);
+\end{minted}
+
+If the projection is an integer it is bounds checked at
+run time. If it is a compact linear type which is the type
+of the array index, no bounds check is required.
+
+\subsection{Array pointer projections}
+And of course arrays have pointer projections:
+
+\begin{minted}{felix}
+var x : int ^ 3 = 1,2,3;
+var px = &x;
+var one = 1;
+var p2 = px . one;
+var v2 = *p2;
+\end{minted}
+
+\section{Ties}
+A tie is a natural transformation which can be applied to any data functor.
+Given a functor $F: {\tt TYPE} \rightarrow {\tt TYPE}$, there is an associated functor 
+$$(\&F) T = F (\&T)$$
+which for each type $T$ is the same data structure of values of type pointer to $T$.
+
+The generic operator \verb%_tie% maps a pointer to a product value to a product of pointers.
+The argument must be a pointer so the components are addressable.
+
+\subsection{Record tie}
+For records we have
+
+\begin{minted}{felix}
+// record tie
+var rec : (a:int, a:int, b:int) = (a=1,a=2,b=3);
+var prec : &(a:int, a:int, b:int) = &rec;
+var tierec : (a:&int, a:&int, b:&int) = _tie prec;
+println$ *(tierec.a), *(tierec.b);
+\end{minted}
+
+which maps a pointer to a record object to a record of pointers to its
+components. 
+
+\subsection{Tuple tie}
+For tuples we have
+
+\begin{minted}{felix}
+// tuple tie
+var tup : int * int * string = (1,2,"Hello");
+var ptup : &(int * int * string) = &tup;
+var tietup : &int * &int * &string= _tie ptup;
+println$ *(tietup.0), *(tietup.1);
+\end{minted}
+
+which maps a pointer to a tuple to a tuples of pointers to its
+components, 
+
+\subsection{Array tie}
+For small arrays, length less than 20, we have
+
+\begin{minted}{felix}
+// array tie
+var arr = (1,2,3);
+var parr = &arr;
+var tiearr = _tie parr;
+println$ *(tiearr.0), *(tiearr.1);
+\end{minted}
+
+which maps a pointer to an array to an array of pointers to its components.
+
+Ties obey the rule:
+$$ ({\rm \_tie}\ p) . \pi = p . \pi$$
+where p is a pointer to a product type and $\pi$ is a projection.
+
+\section{Record pattern match}
+A record can be pattern matched using a record pattern
+consisting of some of the fields of the record:
+
+\begin{minted}{felix}
+var x = (a=1,b=2,c=3);
+match x with
+| (a=va, c=vc) =>  println$ va, vc;
+endmatch;
+\end{minted}
+
+Only the first of a duplicated field can be accessed.
+If a field name is repeated, both associated variables
+refer to the same leftmost field.
+
+\section{Supertype coercion}
+A record can be coerced to a record with less fields:
+
+\begin{minted}{felix}
+var x = (a=1,a=2,b=3,c=4);
+typedef ab = (a:int,b;int);
+var y = x :>> ab; 
+  //  (a=1,b=3)
+\end{minted}
+
+A supertype coercion works by copying the required fields
+as encountered in a left to right scan of the sorted fields:
+if a field is repeated the leading fields are retained
+and the trailing fields lost.
+
+\section{Field removal}
+A record can be constructed from another by removing
+selected fields:
+
+\begin{minted}{felix}
+var x = (a=1,a=2,b=3,c=4);
+var y = (x without a a c);
+\end{minted}
+
+In a record with duplicated fields, the left most field is removed
+for each field name in the removal list, so two fields of the
+same name are removed in succession by repetition in the removal
+list.
+
+\section{Functional update}
+A record can be constructed from another with some field
+values being replaced:
+
+\begin{minted}{felix}
+var x = (a=1,a=77,a=66,b=2,c=3);
+var y = (x with a=99,a=44);
+println$ y._strr;
+\end{minted}
+
+If the record has duplicated fields, repeated replacements
+replace the values of successive duplicates.
+
+The type of the replacement value is checked and must be
+the same as in the record. Consequently the updated record
+will have the same type as the original record.
+
+
+\section{Polyrecords}
+A list of fields may be pushed onto the left of any 
+type with a polyrecord expression:
+
+\begin{minted}{felix}
+var x = (a=1,b=2);
+var y = (a=3,d=2 | x); // (a=3,a=1,b=2,d=2)
+\end{minted}
+
+The type of the result is a record if the RHS term is a record, including
+tuples or unit tuple. 
+
+\section{Row polymorphic function parameters}
+A polyrecord type can be used as or in a function parameter with
+a type variable in the poly slot.
+
+\begin{minted}{felix}
+fun move[T] (p:(x:int,y:int | T)) =>
+  (x=p.x+1,y=p.y+1 | (p without x y))
+;
+\end{minted}
+
+Now we can move a circle:
+
+\begin{minted}{felix}
+var circle = (x=0,y=0,r=1);
+var c = move circle;
+println$ c.x,c.y,c.r; // r not lost
+\end{minted}
+
+or a square:
+
+\begin{minted}{felix}
+var square = (x=0,y=0,w=1,h=1);
+var s = move square;
+println$ c.x,c.y,c.r; // r not lost
+\end{minted}
+
+This is row polymorphism!
+
+\section{Dynamic Objects}
+Felix provides a Java like API for dynamic construction
+of objects. An interface definition is just an alias
+for a record:
+
+\begin{minted}{felix}
+interface X_t = { 
+  get: unit -> int;
+  set: int -> 0;
+}
+// typedef X_t = (
+// get: unit -> int,
+// set: int -> 0
+// );
+\end{minted}
+
+An object definition is just a function which 
+returns a record of function closures:
+
+\begin{minted}{felix}
+object X (var x:int) implements X_t =
+{
+   method fun get () => x;
+   method proc set (a:int) => x = a;
+}
+\end{minted}
+
+Here, the \verb%implements% clause specifies the
+return type of the function, and the \verb%object%
+statement is sugar for a function which returns a
+record consisting of closures of the functions 
+marked \verb%method%.
+
+This provides the object system with the full power
+of structurally typed record manipulations, whilst also
+providing complete encapsulation via functional abstraction.
+
+The return type specification is optional. 
+
+Interfaces can be derived from others by extension:
+
+\begin{minted}{felix}
+interface XPos { get_x: unit -> int; }
+interface YPos { get_y: int -> int; }
+interface Square extends XPos, YPos {
+  get_w: unit -> int;
+  get_h: unit -> int;
+}
+\end{minted}
+
+An extension expression can also be written:
+
+\begin{minted}{felix}
+var r = 
+  extend 
+   (a=1,a=2,b=3),
+   (a=99,a=88) 
+  with 
+    (a=11,a=22,c=4) 
+  end
+  // (a=11,b=3,c=4)
+;
+\end{minted}
+
+Extenions aggregates the first field of a name
+in each record, for each record, replacing
+any duplicates in a left to right scan.
+
+
+\end{document}

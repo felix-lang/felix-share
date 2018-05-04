@@ -1,0 +1,278 @@
+#line 289 "/Users/skaller/felix/src/packages/io.fdoc"
+
+//$ These classes provide simple I/O for text, primarily intended for
+//$ naive use, debugging etc. This is because there is no error
+//$ handling. This simplifies usage at the expense of correctness,
+//$ and so these routines should not be used in production code.
+
+//$ Abstract input file.
+class Input_file[input_file]
+{
+  //$ Open file for reading.
+  virtual gen raw_fopen_input: string -> input_file;
+  virtual gen raw_fopen_input_text: string -> input_file;
+
+  gen fopen_input_text (f:string) : input_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_input_text] " + f
+    ;
+    return raw_fopen_input_text f;
+  }
+
+  gen fopen_input (f:string) : input_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_input] " + f
+    ;
+    return raw_fopen_input f;
+  }
+
+  //$ Check if the file was opened correctly.
+  virtual gen valid : input_file -> bool;
+
+  //$ Close file.
+  virtual proc fclose: input_file;
+
+  //$ Load the rest of an open file.
+  virtual gen load: input_file -> string;
+
+  //$ Read one line with the trailing end-line mark included.
+  //$ Empty string indicates end of file.
+  virtual gen readln: input_file -> string;
+
+  // read up to n bytes from file
+  virtual gen read: input_file * size -> string;
+
+  //$ Read line excluding end of line marks.
+  virtual gen iterator(f:input_file) (): opt[string] =>
+    match readln f with
+    | "" => None[string]
+    | text => text.rstrip.Some
+    endmatch
+  ;
+
+  /*
+  instance Iterable[input_file, string] {
+     gen iterator (f:input_file) () => Input_file[input_file]::iterator f ();
+  }
+  */
+
+  //$ Check for end of file.
+  virtual gen feof : input_file -> bool;
+}
+
+//$ Abstract output file.
+class Output_file[output_file]
+{
+  //$ Open file for writing.
+  virtual gen raw_fopen_output: string -> output_file;
+  virtual gen raw_fopen_output_text: string -> output_file;
+
+  //$ Open file for writing in append-only mode.
+  virtual gen raw_fopen_append: string -> output_file;
+  virtual gen raw_fopen_append_text: string -> output_file;
+
+  gen fopen_output(f:string) : output_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_output] " + f
+    ;
+    return raw_fopen_output f;
+  }
+
+  gen fopen_output_text(f:string) : output_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_output_text] " + f
+    ;
+    return raw_fopen_output_text f;
+  }
+
+  gen fopen_append(f:string) : output_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_append] " + f
+    ;
+    return raw_fopen_append f;
+  }
+
+  gen fopen_output_append_text(f:string) : output_file =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[Open_output_append_text] " + f
+    ;
+    return raw_fopen_append_text f;
+  }
+
+  //$ Check if the file was opened correctly.
+  virtual gen valid : output_file -> bool;
+
+  //$ Close file.
+  virtual proc fclose: output_file;
+
+  //$ Write one line adding the trailing end line mark.
+  virtual proc writeln : output_file * string;
+
+  //$ Write a string.
+  virtual proc write : output_file * string;
+
+  //$ Write a byte.
+  virtual proc write : output_file * utiny;
+
+  //$ Write a char.
+  virtual proc write : output_file * char;
+
+  //$ Flush the buffers.
+  virtual proc fflush: output_file;
+
+  //$ Save string to file
+  proc save (fn:string, d:string)
+  {
+    var f = fopen_output fn;
+    write$ f,d;
+    fclose f;
+  }
+
+  // save list of strings to file
+  // adds a newline to each string in list
+  proc save (fn:string, lines:list[string])
+  {
+    var f = fopen_output fn;
+    iter (proc (s:string) { writeln$ f,s; }) lines;
+    fclose f;
+  }
+
+  //$ Write a space.
+  proc space (s:output_file) { write (s, " "); };
+
+  //$ Write end of line mark.
+  proc endl (s:output_file) { write (s, "\n"); };
+
+  //$ Write data with conversion using Str::str.
+  proc fprint[T with Str[T]] (s:output_file, x:T) { write (s, str x); };
+
+  //$ Write data with conversion using Str::str and end line mark.
+  proc fprintln[T with Str[T]] (s:output_file, x:T) { write (s, str x+"\n"); };
+}
+
+//$ C standard IO with FILE*.
+open class Cstdio {
+
+  //$ C file type.
+  type FILE = "FILE*" requires C89_headers::stdio_h;
+
+  pod type ifile = "FILE*" requires C89_headers::stdio_h;
+  pod type ofile = "FILE*" requires C89_headers::stdio_h;
+
+  //$ Load file from filename.
+  //$ Note: loaded in binary mode not text mode!
+  fun raw_load: string -> string = "::flx::rtl::ioutil::load_file($1)"
+    requires package "flx_ioutil";
+
+  fun raw_load_text: string -> string = "::flx::rtl::ioutil::load_text_file($1)"
+    requires package "flx_ioutil";
+
+  fun load(f:string) : string =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[load] " + f
+    ;
+    return raw_load f;
+  }
+
+  fun load_text(f:string) : string =
+  {
+    if Env::getenv "FLX_FILE_MONITOR" != "" call
+      eprintln$ "[load_text] " + f
+    ;
+    return raw_load_text f;
+  }
+
+
+
+  //$ Standard input, can be redirected by flx_run.
+  const stdin: ifile = "PTF flx_stdin" requires property "needs_ptf";
+
+  //$ Standard output, can be redirected by flx_run.
+  const stdout: ofile = "PTF flx_stdout" requires property "needs_ptf";
+
+  //$ Standard error, can be redirected by flx_run.
+  const stderr: ofile = "PTF flx_stderr" requires property "needs_ptf";
+
+  //$ Standard input, redirected by shell.
+  const cstdin: ifile = "stdin";
+
+  //$ Standard output, redirected by shell.
+  const cstdout: ofile = "stdout";
+
+  //$ Standard error, redirected by shell.
+  const cstderr: ofile = "stderr";
+
+  //$ C standard IO as instance of Input_file.
+  instance Input_file[ifile] {
+    requires package "flx_ioutil";
+    gen raw_fopen_input: string -> ifile = 'fopen($1.c_str(),"rb")';
+    gen raw_fopen_input_text: string -> ifile = 'fopen($1.c_str(),"r")';
+    gen valid : ifile -> bool = "$1!=(FILE*)0";
+    proc fclose: ifile = '(void)fclose($1);';
+    gen load: ifile -> string = "::flx::rtl::ioutil::load_file($1)";
+    gen readln: ifile -> string ="::flx::rtl::ioutil::readln($1)";
+    gen read: ifile *size -> string = "::flx::rtl::ioutil::raw_read($1,$2)";
+    gen feof : ifile -> bool = "feof($1)";
+  }
+
+  //$ C standard IO as instance of Output_file.
+  instance Output_file[ofile] {
+    requires package "flx_ioutil";
+    gen raw_fopen_output: string -> ofile = 'fopen($1.c_str(),"wb")';
+    gen raw_fopen_output_text: string -> ofile = 'fopen($1.c_str(),"w")';
+    gen raw_fopen_append: string -> ofile = 'fopen($1.c_str(),"ab")';
+    gen raw_fopen_append_text: string -> ofile = 'fopen($1.c_str(),"a")';
+    gen valid : ofile -> bool = "$1!=(FILE*)0";
+    proc fclose: ofile = '(void)fclose($1);';
+    proc writeln : ofile * string ="::flx::rtl::ioutil::writeln($1,$2);";
+    proc write : ofile * string ="::flx::rtl::ioutil::write($1,$2);";
+    proc write : ofile * utiny ="fwrite($2,1,1,$1);";
+    proc write : ofile * char ="fwrite($2,1,1,$1);";
+    proc fflush: ofile = "fflush($1);";
+  }
+}
+
+open Input_file[Cstdio::ifile];
+// note we cannot open Iterable here because it would cause
+// a conflict ;(
+
+open Output_file[Cstdio::ofile];
+//$ DEBUG OUTPUT UTIITIES!
+//$ DO NOT REQUIRE THREAD FRAME.
+//$ NOT REDIRECTABLE BY DRIVER.
+//$ (can be redirected by OS if OS can do it)
+
+//$ Write string to output.
+proc print  [T with Str[T]] (x:T) { fprint (cstdout, x); };
+
+//$ Write string to output with end of line. Also does a flush
+//$ to improve synchronisation with cstderr.
+proc println[T with Str[T]] (x:T) { fprintln (cstdout, x); fflush cstdout; };
+
+//$ Write end of line on output.
+proc endl() { endl cstdout; }
+
+//$ Write space on cout.
+proc space() { space cstdout; }
+
+//$ flush buffers of cout.
+proc fflush() { fflush cstdout; }
+
+//$ Write string to cerr.
+proc eprint  [T with Str[T]] (x:T) { fprint (cstderr, x); };
+
+//$ Write string to cerr with end of line.
+proc eprintln[T with Str[T]] (x:T) { fprintln (cstderr, x); fflush cstderr; };
+
+//$ Write end of line on cerr.
+proc eendl() { endl cstderr; }
+
+//$ Write space on cerr.
+proc espace() { space cstderr; }

@@ -1,0 +1,28 @@
+#line 50 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+
+header pthread_hxx = '#include "pthread_thread.hpp"';
+header mutex_hxx = '#include "pthread_mutex.hpp"';
+header condv_hxx = '#include "pthread_condv.hpp"';
+header counter_hxx = '#include "pthread_counter.hpp"';
+header semaphore_hxx = '#include "pthread_semaphore.hpp"';
+header monitor_hxx = '#include "pthread_monitor.hpp"';
+header work_fifo_hxx = '#include "pthread_work_fifo.hpp"';
+
+//$ This class provides access to the operating system's native
+//$ threading routines. On systems with multiple cpus, this may
+//$ increase performance as the operating system may schedule
+//$ threads on different processors.
+open class Pthread
+{
+  requires package "flx_pthread";
+
+  //$ spawn a detached pthread.
+  proc spawn_pthread(p:1->0)
+  {
+      var con = start p;              // get continuation of p
+      var fthr = mk_thread con;
+      svc$ svc_spawn_pthread fthr;
+  }
+  proc thread_yield : 1 = "PTF gcp->collector->get_thread_control()->yield();";
+}
+

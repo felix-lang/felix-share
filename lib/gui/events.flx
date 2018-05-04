@@ -1,0 +1,80 @@
+#line 176 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiEvents
+{
+  typedef event_t = SDL_Event;
+
+  fun _match_ctor_QUIT (e:event_t) => e.type == SDL_QUIT.uint32;
+  fun _match_ctor_WINDOWEVENT (e:event_t) => e.type == SDL_WINDOWEVENT.uint32;
+  fun _ctor_arg_WINDOWEVENT (e:event_t) => e.window;
+
+  fun _match_ctor_KEYDOWN (e:event_t) => e.type == SDL_KEYDOWN.uint32;
+  fun _ctor_arg_KEYDOWN (e:event_t) => e.key;
+
+  fun _match_ctor_KEYUP (e:event_t) => e.type == SDL_KEYUP.uint32;
+  fun _ctor_arg_KEYUP(e:event_t) => e.key;
+
+  fun _match_ctor_MOUSEMOTION (e:event_t) => e.type == SDL_MOUSEMOTION.uint32;
+  fun _ctor_arg_MOUSEMOTION (e:event_t) => e.motion;
+
+  fun _match_ctor_MOUSEBUTTONDOWN (e:event_t) => e.type == SDL_MOUSEBUTTONDOWN.uint32;
+  fun _ctor_arg_MOUSEBUTTONDOWN (e:event_t) => e.button;
+
+  fun _match_ctor_MOUSEBUTTONUP (e:event_t) => e.type == SDL_MOUSEBUTTONUP.uint32;
+  fun _ctor_arg_MOUSEBUTTONUP (e:event_t) => e.button;
+
+  fun _match_ctor_MOUSEWHEEL  (e:event_t) => e.type == SDL_MOUSEWHEEL.uint32;
+  fun _ctor_arg_MOUSEWHEEL (e:event_t) => e.wheel;
+
+  fun _match_ctor_TEXTINPUT (e:event_t) => e.type == SDL_TEXTINPUT.uint32;
+  fun _ctor_arg_TEXTINPUT (e:event_t) => e.text;
+
+  fun _match_ctor_TEXTEDITING (e:event_t) => e.type == SDL_TEXTEDITING.uint32;
+  fun _ctor_arg_TEXTEDITING (e:event_t) => e.edit;
+
+  chip event_source
+    connector events
+      pin src : %> event_t
+  {
+      var clock = Faio::mk_alarm_clock();
+      var e : SDL_Event;
+      // dummy first event
+      e&.type <- SDL_FIRSTEVENT.uint32;
+      write$ events.src,e;
+      proc waitevent()
+      {
+      nexte:>
+        var result = SDL_PollEvent$ &e;
+        if result == 0 do
+          Faio::sleep(clock,0.1);
+          goto nexte;
+        done
+      }
+      waitevent;
+      while e.type.SDL_EventType != SDL_QUIT do
+//println$ "SDL EVENT: " + e.type.SDL_EventType.str + " SDL window #" + e.window.windowID.str;
+        write$ events.src, e;
+        waitevent;
+      done
+      println$ "[event_source] SDL_QUIT seen!";
+      write$ events.src, e;
+      return;
+  } // chip event_source
+
+  proc demo_timer (quit:&bool) (var d:double) ()
+  {
+    var delta = 0.1;
+    var clock = Faio::mk_alarm_clock();
+  again:>
+    Faio::sleep(clock,delta);
+    d -= delta;
+    if *quit goto doquit;
+    if d > 0.0 goto again;
+    quit <- true;
+    var quitmsg : SDL_Event;
+    quitmsg&.type <- SDL_QUIT.uint32;
+println$ "TIMEOUT";
+    C_hack::ignore(SDL_PushEvent(&quitmsg));
+doquit:>
+  }
+
+}

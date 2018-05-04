@@ -1,0 +1,97 @@
+@h1 Categorical Types.
+Before we can venture into the arena of Felix generalised array
+support we need to review some basic category theory.
+
+We need to understand two basic type constructors: products and sums.
+Products are well understood by all programmers. In math we
+speak of <em>Cartesian Product</em> such as <em>R * R</em> representing
+a plane in a Euclidean geometry, where <em>R</em> is of course the
+real number line.
+
+In Felix, we just call these things tuples:
+@felix
+var tup : string * int * double = "Hello", 42, 3.141;
+@
+using a chain of {*} for non-associative n-ary product type
+formation, and {,} for the corresponding value construction.
+An integer constant can be used to denote a projection
+function, which extracts one of the components.
+@felix
+var c0 : string = 0 tup;
+var c1 : int = tup . 1;
+@
+The reverse application operator {.} makes the second form
+more intuitive. Projection functions are sometimes
+called <em>fields</em>.
+ 
+Such types are said to be structural because they do not
+have a specified unique name but are identified by their shape:
+Felix also has a nominally typed product, the usual C @{struct}.
+The theory is simpler with structural typing so we will stick
+to that here.
+
+Much less understood by programmers is the sum or variant type.
+Whilst a product may be thought of as "all of these things aggregated",
+a sum type is "pick one of these things". It is the type of choices,
+conditionals, and switched control flow.
+
+The best known sum type is the humble enumeration, and the best
+understood enumeration is called @{bool}. It is a type of two
+choices: @{false} or @{true}.
+
+For structurally typed enumerations, we just use an integer constant
+to denote the type:
+@felix
+begin
+  var f : 2 = case 0 of 2; // aka false
+  var t : 2 = case 1 of 2; // aka true
+end
+@
+which is identical to the more familiar:
+@felix
+begin
+  var f : bool = false; // aka false
+  var t : bool = true; // aka true
+end
+@
+The @{case} notation is a bit ugly, and it seems unnatural
+to number cases from 0 upto {n-1} with zero origin notation,
+but we have chosen that for consistency with tuple notation
+and C.
+
+A more general sum type is shown below:
+@felix
+var s : string + int + double = 
+  (case 0 of string + int + double) "Hello"
+;
+
+proc p(x: string + int + double) {
+  match x with
+  | case 0 x => println$ x+" world";
+  | case 1 x => println$ x+1;
+  | case 2 x => println$ x+2.2;
+  endmatch;
+}
+
+p s;
+s = (case 1 of string + int + double) 42;
+p s;
+s = (case 2 of string + int + double) 3.141;
+p s;
+@
+
+Here you see three cases which carry data of a specific type.
+You use pattern matching to discover which of the three possible
+cases is carried and then safely access that type.
+
+The case value thing is called a type constructor because
+it takes a value of one of the components of a sum type and creates a
+value of the sum type. This is the way to unify or homogenise 
+heterogenous types. Note in the pattern matching we don't need
+to specify the type, only the case tag (index value).
+
+Unlike products which are constructive types charactised by the
+projection functions that inspect them, sums are destructive types
+characterised by the injection functions that build them:
+namely the type constructors.
+

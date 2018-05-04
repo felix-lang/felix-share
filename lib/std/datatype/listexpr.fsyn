@@ -1,0 +1,13 @@
+#line 723 "/Users/skaller/felix/src/packages/lists.fdoc"
+syntax listexpr
+{
+  //$ List cons, right associative.
+  x[sarrow_pri] := x[>sarrow_pri] "!" x[sarrow_pri] =>#
+    '''`(ast_apply ,_sr (,(nos "Snoc") (,_3 ,_1)))'''
+  ;
+
+  satom := "(" "[" stypeexpr_comma_list "]" ")" =>#
+    '''`(ast_apply ,_sr (,(nos "list") (ast_tuple ,_sr ,_3)))'''
+  ;
+}
+

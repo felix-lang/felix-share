@@ -1,0 +1,78 @@
+@h2 {flx}
+Felix is designed so that the programmer generally only needs
+to use a single, integrated tool: {flx}.
+
+The most basic operation of flx is quite simple, given a program
+script {hello.flx} which accepts a single argument, 
+you can run the script like:
+@pre
+flx hello world
+@
+This is the same as an ordinary command except that we must
+prefix the word {flx}.
+
+Behind the scenes, {flx} will invoke the actual compiler {flxg}
+to translate the program {hello.flx} into {C++}, then it invokes
+the system C++ compiler to generate object files, links these
+object files along with any required libraries, and finally
+runs the resulting executable.
+
+All this happens in the background and without touching any directories
+other than the Felix cache. You need permission to read the program
+and libraries, but neither write nor execute permission is required.
+
+The {flx} tool has depencency checking based on time stamps, and will
+skip over any steps where a cached output is already up to date.
+Recompilation when Felix is upgraded is automatic.
+
+Although originally designed to run Felix programs, {flx} will be
+able to compile and run programs written in C, C++, and Ocaml 
+in future versions. C++ is supported now provided you use a 
+dispatch stub written in Felix.
+
+See:
+<ul>
+<li>Flx <a href="tools_flx_cli.fdoc">command line interface</a></li>
+<li><a href="tools_flx_howto_index.fdoc">perform various tasks</a></li>
+<li><a href="tools_flx_separate_compilation_index.fdoc">How to do separate compilation.</a></li>
+</ul>
+
+@h3 Package management.
+In order to allow linking to various libraries,
+both Felix own run time libraries (RTL) and third
+party libraries, Felix uses a resource management
+system based on packages.
+
+A package descriptor is a file with suffix {*.fpc}
+similar to a pkgconfig file. These files are typically
+located in the directory
+
+@pre
+$FLX_INSTALL_DIR/host/config
+@
+
+The directory acts as a database which maps abstract
+package names specified in program text like:
+@felix
+requires package "gmp";
+@
+to the names of the required C or C++ header files
+and the name of the required static or dynamic link
+shared libraries. 
+
+The flxg compile emits a list of the required abstract
+package names in the file
+@pre
+basename.resh
+@
+in the cache, next to the generated C++ with the
+same basename. {flx} then uses this file to find
+all the headers and libraries required to compile
+and link your program. Therefore usually, you do not
+need to specify any search paths or library names
+to compile, link, and run your Felix code.
+
+The standalone tool {flx_pkgconfig} can be used to
+query the configuration database and is documented
+elsewhere.
+

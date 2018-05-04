@@ -1,0 +1,41 @@
+<p><a href='tutorial.fdoc'>Up</a></p>
+@h1 Felix Language Tutorial
+
+Welcome to the Felix language!
+
+In this tutorial will cover the basics of programming in Felix by starting with short examples.
+By the end of this tutorial, you should know enough about Felix to write modest applications and (hopefully) impress your friends and collegues.
+This tutorial should also enable you to explore Felix's more advanced features in the other documents.
+
+For someone that is already familiar with a programming langauge, this tutorial shouldn't take long--maybe 15-20 minutes.
+We encourage you not to skip ahead to more ambitious things; not yet anyway.
+You can skim the words, but we encourage you to look at the code examples, the output, and ask the question "why did that happen?"
+Some concepts like "applying a function to each element of a list" seem innocuous but not every language is the same, and Felix has some notable differences.
+
+So go get cup of coffee, relax in your favorite chair (or standing desk), fire up your text editor, and follow along with us as we go.
+
+If you find issue with anything in this tutorial or have specific questions,
+please send a message to our <a href='https://groups.google.com/forum/#!forum/felix-language'>mailing list</a>.
+We enjoy answering questions, talking about Felix, hearing about what your experiences, and would appreciate hearing from you.
+
+<ul>
+<li><a href="tut_01.fdoc">Hello world</a></li>
+<li><a href="tut_02.fdoc">Environment Variables</a></li>
+<li><a href="tut_03.fdoc">Command Line Arguments</a></li>
+<li><a href="tut_04.fdoc">Reading Standard Streams</a></li>
+<li><a href="tut_05.fdoc">String Manipulation</a></li>
+<li><a href="tut_06.fdoc">Variables</a></li>
+<li><a href="tut_07.fdoc">Control</a></li>
+<li><a href="tut_08.fdoc">Functions</a></li>
+<li><a href="tut_09.fdoc">Procedures</a></li>
+<li><a href="tut_10.fdoc">Generators</a></li>
+<li><a href="tut_11.fdoc">Calling Subroutines</a></li>
+<li><a href="tut_12.fdoc">Some basic data types</a></li>
+<li><a href="tut_13.fdoc">Tuple product type</a></li>
+<li><a href="tut_14.fdoc">Array products</a></li>
+<li><a href="tut_15.fdoc">Record products</a></li>
+<li><a href="tut_16.fdoc">Struct products</a></li>
+<li><a href="tut_17.fdoc">Pointers</a></li>
+<li><a href="tut_18.fdoc">Assignments</a></li>
+<li><a href="tut_19.fdoc">The Standard Library</a></li>
+</ul>

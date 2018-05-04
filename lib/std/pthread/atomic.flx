@@ -1,0 +1,27 @@
+#line 523 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+open class Atomic
+{
+  // note: only works for some types: constraints need to be added.
+  // We have to use a pointer because atomics aren't copyable
+
+  type atomic[T]="::std::atomic<?1>*" requires Cxx11_headers::atomic;
+
+  // FIXME: not managed by GC yet!
+  // constructor
+  ctor[T] atomic[T]: T = "(new ::std::atomic<?1>($1))";
+
+  proc delete[T] : atomic[T] = "delete $1;";
+
+  // note: only works for even less types! Constraints needed.
+  proc pre_incr[T] : &atomic[T] = "++**$1;";
+  proc pre_decr[T] : &atomic[T] = "--**$1;";
+  gen load[T] : atomic[T] -> T = "$1->load()";
+  proc store[T] : atomic[T] * T = "$1->store($2);";
+  proc store[T] (a:atomic[T]) (v:T) { store (a,v); }
+
+  instance[T] Str[atomic[T]] {
+    fun str (var x:atomic[T]) => x.load.str;
+  }
+  inherit[T] Str[atomic[T]];
+}
+

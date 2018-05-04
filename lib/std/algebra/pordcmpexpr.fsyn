@@ -1,0 +1,21 @@
+#line 337 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax pordcmpexpr
+{
+  cmp := "\subset" =># '(nos _1)';
+  cmp := "\supset" =># '(nos _1)';
+  cmp := "\subseteq" =># '(nos _1)';
+  cmp := "\subseteqq" =># '(nos _1)';
+  cmp := "\supseteq" =># '(nos _1)';
+  cmp := "\supseteqq" =># '(nos _1)';
+
+  cmp := "\nsubseteq" =># '(nos _1)';
+  cmp := "\nsubseteqq" =># '(nos _1)';
+  cmp := "\nsupseteq" =># '(nos _1)';
+  cmp := "\nsupseteqq" =># '(nos _1)';
+
+  cmp := "\subsetneq" =># '(nos _1)';
+  cmp := "\subsetneqq" =># '(nos _1)';
+  cmp := "\supsetneq" =># '(nos _1)';
+  cmp := "\supsetneqq" =># '(nos _1)';
+}
+

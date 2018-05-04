@@ -1,0 +1,3 @@
+#line 23 "/Users/skaller/felix/src/packages/libstruct.fdoc"
+header '#include "flx_rtl_config.hpp"';
+include "std/__init__";

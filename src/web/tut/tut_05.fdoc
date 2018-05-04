@@ -1,0 +1,59 @@
+@title String manipulation
+
+@h2 Stripping leading and trailing spaces from a string
+
+Unfortunately there's a bug in this program: @{readln} reads in a line including the newline. 
+We can fix this and remove excess spaces at the same time.
+
+@felix
+write$ stdout,"Enter your name: "; fflush stdout;
+var name = strip (readln$ stdin);
+writeln$ stdout, "Hello " + name + "!";
+@input
+Bugs Bunny
+@expect
+Enter your name: Bugs Bunny
+Hello Bugs Bunny!
+@
+
+This uses the function @{strip} from the  String module 
+  to remove leading and trailing whitespace.
+In this case, whitespace includes spaces, tabs, and newlines.
+
+@h2 Slicing strings
+
+It's common to use just a portion of a string, and here convenience is king.
+In Python this is called "slicing" strings.
+Supposing we wanted to take 13 characters from a string, starting at the third character, we could use the following:
+
+@felix
+println$ "Hello world, how are you?!".[3 to 16];
+@expect
+lo world, how
+@
+
+@h2 Concatenation
+
+Felix supports concatenation (joining) of strings via the "+" (plus) operator.
+You can think of it as "adding" strings together, but be aware that this operation is different from adding numbers together.
+We differentiate these operations by the use of types.
+When two strings are added together, then we use string concatenation.
+When two integers are added together, then we use standard arithmetic.
+When the types are mixed, we issue a type error.
+Later on, we will see how these decisions are made and add some special cases of our own.
+
+@felix
+println$ "abc" + "def";  // valid concatenation of two strings
+@expect
+abcdef
+@
+
+@felix-unchecked
+println$ "abc" + 1; // type error (mixing string and int)
+@
+
+@felix
+println$ "abc" + 1.str; // convert 1 to "1" before concatenating
+@expect
+abc1
+@

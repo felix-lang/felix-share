@@ -1,0 +1,4 @@
+Generated_from: 1709 "/Users/skaller/felix/src/packages/toolchain.fdoc"
+Descriptrion: Cygwin Dll
+provides_dlib: -L/usr/bin -lcygwin
+includes: '"sys/cygwin.h"'

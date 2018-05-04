@@ -1,0 +1,82 @@
+class SyncControl
+{
+  //$ Model of synchronous control state value.
+  //$ terminated: Not used.
+  //$ blocked: out of fthreads to run.
+  //$ delegated: non synchronous service call, delegate to our caller.
+
+  enum fstate_t = terminated, blocked, delegated;
+  instance Str[fstate_t] {
+    fun str: fstate_t -> string = 
+    | #terminated => "terminated"
+    | #blocked => "blocked"
+    | #delegated => "delegated"
+    ;
+  }
+
+  //$ Fthread state model.
+  //$ next_fthread_pos: restart scheduler by grabbing a new fthread
+  //$ from the active list.
+  //$ next_request_pos: restart scheduler by handling the service
+  //$ request of the currently active fthread.
+
+  enum fpc_t = next_fthread_pos, next_request_pos;
+
+  //$ The type of a list of active fthreads to schedule.
+  type fthread_list = "::std::list<::flx::rtl::fthread_t*>*" requires Cxx_headers::list;
+
+  //$ Construct an empty fthread list.
+  ctor fthread_list: 1 = "new ::std::list<::flx::rtl::fthread_t*>";
+
+  //$ Delete an fthread list.
+  proc delete : fthread_list = "delete $1;";
+
+  //$ Push an fthread onto an fthread list.
+  proc push_back: fthread_list * fthread = "$1->push_back($2); PTF gcp->collector->add_root($2);";
+
+  //$ Upcast a procedure closure to a continuation.
+  ctor cont: (1->0) = "static_cast<::flx::rtl::con_t*>($1)";
+
+  //$ Create an fthread from a continuation.
+  ctor fthread: cont = "new (*PTF gcp, ::flx::rtl::_fthread_ptr_map, false) ::flx::rtl::fthread_t($1)";
+
+  //$ Type of a synchronous scheduler.
+  type scheduler = "::flx::run::sync_sched*" requires header '#include "flx_sync.hpp"';
+
+  //$ Constructor for a synchronous scheduler.
+  //$ Accepts a list of fthreads to run.
+  //$ Uses the callers garbage collector.
+  ctor scheduler : fthread_list = "new ::flx::run::sync_sched(false, PTF gcp, $1)";
+  proc delete: scheduler = "delete $1;";
+
+  //$ Invoke the scheduler and run until one of two
+  //$ events transpires: blocked, delegated.
+
+  proc run : scheduler = "$1->frun();";
+
+  //$ get the exit state of the scheduler after running.
+  fun get_scheduler_state : scheduler -> fstate_t = "$1->fs";
+
+  //$ Run a single procedure as a fibre on
+  //$ new scheduler. This scheduler acts like a subroutine,
+  //$ control doesn't return to the caller until the scheduler
+  //$ queue is empty. This call cannot handle async I/O,
+  //$ so any attempt to do it will cause the program to abort.
+  proc run_proc (p: 1->0) {
+    var clsa = cont p;                       // cast procedure to continuation (throw out type)
+    var fthr = fthread clsa;                 // construct an fthread from the continuation.
+    var lst = #fthread_list;                 // make scheduler list for scheduler to use.
+    var sched = scheduler lst;               // construct scheduler.
+    push_back (lst,fthr);                    // add our job to the scheduler list.
+    run sched;                               // run the scheduler.
+    var result = get_scheduler_state sched;  // get return state of scheduler.
+    match result with 
+    | #terminated => assert false;            // unused.
+    | #delegated =>                           // bug out if async I/O attempted.
+      raise "Inner scheduler attemped unavailable service call";
+    | #blocked =>                             // this scheduler ran out of threads.
+      delete sched;                          // cleanup: delete the scheduler
+      delete lst;                            // and the scheduler list.
+    endmatch;
+  }
+}

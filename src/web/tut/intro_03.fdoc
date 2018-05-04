@@ -1,0 +1,46 @@
+@h1 Binding Shortcuts
+To make it a bit easier there are some shortcuts when making bindings.
+@h2 All arguments $a
+For a function or procedure you can write this:
+@felix
+fun add: int * int -> int = "add($a)";
+@
+where {$a} just means the same as {$1,$2} in this case.
+Useful for functions with a lot of arguments.
+
+@h2 Default definition
+You can also default the definition of a function
+or procedure by just leaving it out:
+@felix
+fun f: int * int -> int;
+@
+which is the same as if {f($1,$2)} had been specified.
+This only works for C functions, since there's no way to
+put a C++ namespace in.
+
+@h2 Multiple C types
+you can bind one or more Felix types to C types of the
+same name:
+@felix
+ctypes myint, mylong;
+@
+
+@h2 Enumerations
+In Felix you can bind a C enumeration like:
+@felix
+cenum myenum = one,two,three;
+@
+This defines the type @{myenum}, and also constants
+@{one}, @{two}, @{three} equal to their C values.
+The type is also equipped with equality and inequality
+comparisons automatically.
+
+@h2 Flags
+C enumerations are sometimes used for flags bits.
+So you can write this:
+@felix
+cflags myflags = flag1, flag2, flag3;
+@
+This type is provided with equality {==} and inequality {!=} 
+as well as bitwise operations: bitwise or {\|}, bitwise and {\&},
+bitwise exclusive or {\^} and bitwise not (complement) {~}.

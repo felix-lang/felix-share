@@ -1,0 +1,181 @@
+#line 993 "/Users/skaller/felix/src/packages/io.fdoc"
+
+class Socket_class[socket_t] {
+  requires package "demux";
+
+  virtual proc mk_listener: &socket_t * &int * int;
+  virtual proc accept: socket_t * &socket_t;
+  virtual proc shutdown: socket_t * int;
+  virtual proc connect: &socket_t * +char * int * &int;
+
+  inherit IOStream::IByteStream[socket_t];
+  inherit IOStream::OByteStream[socket_t];
+  inherit IOStream::IOByteStream[socket_t];
+  inherit IOStream::TerminalIByteStream[socket_t];
+  inherit IOStream::TerminalOByteStream[socket_t];
+  inherit IOStream::TerminalIOByteStream[socket_t];
+}
+
+#line 1012 "/Users/skaller/felix/src/packages/io.fdoc"
+class PosixSocket
+{
+  requires package "demux";
+  typedef socket_t = Faio_posix::socket_t;
+  inherit Socket_class[socket_t];
+  instance Socket_class[socket_t]
+  {
+    proc mk_listener (l:&socket_t, port: &int, qlen:int) =>
+      Faio_posix::mk_listener(l, port, qlen)
+    ;
+
+    proc accept (l:socket_t, s:&socket_t) =>
+      Faio_posix::accept(s, l)  // success or not? error checking
+    ;
+
+    proc shutdown(s: socket_t, how: int) =>
+      Faio_posix::shutdown(s, how)
+    ;
+
+    proc connect(s: &socket_t, addr: +char, port: int, err: &int) =>
+        Faio_posix::connect(s, addr, port, err)
+    ;
+
+  }
+
+  //
+  // socket_t
+  //
+  instance IOStream::IByteStream[socket_t]
+  {
+    proc read(s: socket_t, len: &int, buf: address, eof: &bool)
+      { Faio_posix::async_read(s, len, buf, eof); }
+  }
+
+  instance IOStream::OByteStream[socket_t]
+  {
+    proc write(s: socket_t, len: &int, buf: address, eof: &bool)
+      {
+        //println$ "faio/socket.flx: Stream::OByteStream[socket_t]: write(s,"+str (*len)+",buf,"+str(*eof)+") calling async_write ..";
+        Faio_posix::async_write(s, len, buf, eof);
+        //println$ "faio/socket.flx: Stream::OByteStream[socket_t]: write(s,"+str (*len)+",buf,"+str(*eof)+") called async_write ..";
+      }
+  }
+
+  instance IOStream::IOByteStream[socket_t] {}
+
+  instance IOStream::TerminalIByteStream[socket_t]
+  {
+    proc iclose (s:socket_t)
+      { Faio_posix::shutdown (s,0); Faio_posix::close s; }
+  }
+
+  instance IOStream::TerminalOByteStream[socket_t]
+  {
+    proc oclose (s:socket_t)
+      { Faio_posix::shutdown (s,1); Faio_posix::close s; }
+  }
+
+  instance IOStream::TerminalIOByteStream[socket_t]
+  {
+    proc ioclose (s:socket_t)
+      {
+        // RF: just close, I don't think any of this stuff is necessary.
+        // I think this is an application level problem.
+        //fprint (cstderr,q"STREAM:Closing socket $s\n");
+        //Faio_posix::shutdown(s,2);
+        //Faio::sleep (Faio::sys_clock,5.0);
+        /*
+        var len = 1; var eof = false; var buf = Memory::malloc(1);
+        Faio_posix::async_read(s, &len, buf, &eof);
+        fprint (cstderr,q"STREAM:socket $s, eof=$eof\n");
+        Faio_posix::shutdown(s,0);
+        */
+        Faio_posix::close s;
+      }
+  }
+
+}
+
+#line 1095 "/Users/skaller/felix/src/packages/io.fdoc"
+class Win32Socket
+{
+  requires package "demux";
+  typedef socket_t = Faio_win32::socket_t;
+  inherit Socket_class[socket_t];
+  instance Socket_class[socket_t]
+  {
+    proc mk_listener (l:&socket_t, port: &int, qlen:int) =>
+      Faio_win32::mk_listener(l, port, qlen)
+    ;
+    proc accept (var l:socket_t, s:&socket_t)
+    {
+      var success: bool;
+      Faio_win32::mk_socket(s);  // error check?
+      Faio_win32::Accept(&success, l, *s);
+      if not success do
+        fprint (cstdout, "Accept failed! num?\n");
+      done
+    }
+
+    proc shutdown(s: socket_t, how: int) =>
+      Faio_win32::shutdown(s, how)
+    ;
+
+    proc connect(s: &socket_t, addr: +char, port: int, err: &int) =>
+      Faio_win32::Connect(s, addr, port, err)
+    ;
+
+  }
+
+  //
+  // socket_t
+  //
+  instance IOStream::IByteStream[socket_t]
+  {
+    proc read(s: socket_t, len: &int, buf: address, eof: &bool) =>
+      Faio_win32::WSARecv(s, len, buf, eof)
+    ;
+  }
+
+  instance IOStream::OByteStream[socket_t]
+  {
+    proc write(s: socket_t, len: &int, buf: address, eof: &bool) =>
+      Faio_win32::WSASend(s, len, buf, eof)
+    ;
+  }
+
+  instance IOStream::IOByteStream[socket_t] {}
+
+  instance IOStream::TerminalIByteStream[socket_t]
+  {
+    proc iclose (s:socket_t) =>
+      Faio_win32::closesocket s
+    ;
+  }
+
+  instance IOStream::TerminalOByteStream[socket_t]
+  {
+    proc oclose (s:socket_t) =>
+      Faio_win32::closesocket s
+    ;
+  }
+
+  instance IOStream::TerminalIOByteStream[socket_t]
+  {
+    proc ioclose (s:socket_t) =>
+      Faio_win32::closesocket s
+    ;
+  }
+}
+#line 1169 "/Users/skaller/felix/src/packages/io.fdoc"
+
+class Socket
+{
+  if PLAT_WIN32 do
+    inherit Win32Socket;
+  elif PLAT_POSIX do
+     inherit PosixSocket;
+  else
+     ERROR;
+  done
+}

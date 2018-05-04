@@ -1,0 +1,4 @@
+#line 212 "/Users/skaller/felix/src/packages/programmer.fdoc"
+val e = int (System::argv 1);
+println$ "Errno " + str e + " " + Errno::strerror e.Errno::errno_t;
+

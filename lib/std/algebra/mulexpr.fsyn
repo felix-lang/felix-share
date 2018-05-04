@@ -1,0 +1,8 @@
+#line 575 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax mulexpr
+{
+  //$ multiplication: non-associative.
+  x[sproduct_pri] := x[>sproduct_pri] ("*" x[>sproduct_pri])+ =>#
+    "(chain 'ast_product _1 _2)" note "mul";
+}
+

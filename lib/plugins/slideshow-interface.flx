@@ -1,0 +1,8 @@
+#line 3495 "/Users/skaller/felix/src/packages/flx_web.fdoc"
+interface slideshow_t {
+  whatami : 1 -> string;
+  check-slide-commands : string -> bool;
+  finalise: 1 -> 0;
+  active : 1 -> bool;
+}
+

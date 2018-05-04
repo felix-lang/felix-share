@@ -1,0 +1,4 @@
+Generated_from: 1927 "/Users/skaller/felix/src/packages/rtl-threads.fdoc"
+Description: Linux pthread support
+requires_dlibs: -lpthread
+requires_slibs: -lpthread

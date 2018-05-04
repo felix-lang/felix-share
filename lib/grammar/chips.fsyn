@@ -1,0 +1,47 @@
+#line 5277 "/Users/skaller/felix/src/packages/grammar.fdoc"
+syntax chips {
+  //$ input schannel type %<T
+  pintype := "%<" x[spower_pri] =># '`(ast_name ,_sr "ischannel" (,_2))';
+
+  //$ output schannel type %>T
+  pintype := "%>" x[spower_pri] =># '`(ast_name ,_sr "oschannel" (,_2))';
+
+  //$ input/output schannel type %<>T
+  pintype := "%<>" x[spower_pri] =># '`(ast_name ,_sr "ioschannel" (,_2))';
+
+  //$ duplex schannel type %<INPUT%>OUTPUT
+  pintype := "%<" x[spower_pri] "%>" x[spower_pri] =>#
+    '`(ast_name ,_sr "duplex_schannel" (,_2 ,_4))'
+  ;
+
+  pinspec :=  "pin" sname ":"  pintype =># "`(,_2 ,_4)";
+
+  stmt := "chip" sdeclname sfun_arg*
+    "connector" sname pinspec*
+     scompound =>#
+    """
+      (let*
+        (
+          (name (first _2))
+          (vs (second _2))
+          (args _3)
+          (effects dflteffects)
+          (ret `(ast_void ,_sr))
+          (traint 'none)
+          (body _7)
+          (pinstype `(ast_record_type ,_6))
+          (pinsarg `(,_sr PVal ,_5 ,pinstype none))
+          (pinsargs `((Satom ,pinsarg) none))
+          (args (append args `(,pinsargs ,unitparam)))
+        )
+        `(ast_curry_effects ,_sr ,name ,vs ,args (,ret ,traint) ,effects
+         NoInlineFunction (NoInlineFunction) ,body)
+      )
+    """;
+
+  stmt := "circuit" sconnection+ "endcircuit" =># "`(ast_circuit ,_sr ,_2)";
+   spin := sname "." sname =># "`(,_1 ,_3)";
+   sconnection := "connect" list::commalist1<spin> =># "`(connect ,_2)";
+   sconnection := "wire" stypeexpr "to" sname "." sname =># "`(wire (,_2 ,_4 ,_6))";
+
+}

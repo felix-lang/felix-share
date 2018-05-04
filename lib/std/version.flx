@@ -1,0 +1,5 @@
+// GENERATED DURING BUILD (for version number)
+class Version
+{
+  const felix_version : string = '::std::string("2016.07.12-rc1")';
+}

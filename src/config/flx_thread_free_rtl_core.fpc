@@ -1,0 +1,5 @@
+Generated_from: 1673 "/Users/skaller/felix/src/packages/rtl.fdoc"
+Description: Felix Core Run Time Libraries (no threads, no async I/O)
+Requires: flx flx_gc flx_thread_free_run
+Requires: flx_exceptions
+Requires: re2 flx_dynlink

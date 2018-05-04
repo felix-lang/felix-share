@@ -1,0 +1,31 @@
+#line 620 "/Users/skaller/felix/src/packages/flx_pkgconfig.fdoc"
+include "std/felix/flx_pkgconfig";
+
+export FlxPkgConfig::flx_pkgconfig of (list[string]) as "flx_pkgconfig";
+
+export struct FlxPkgConfigQuery_struct
+{
+    query:           list[string] -> int * list[string];
+    getpkgfield:     (1->0) -> string * string -> list[string];
+    getpkgfield1:    (1->0) -> string * string -> string;
+    getpkgfieldopt:  (1->0) -> string * string -> opt[string];
+    getpkgfielddflt: (1->0) -> string * string ->  string;
+    getclosure:      (1->0) -> string -> list[string];
+}
+
+gen mk_pkgconfig_query (a:FlxPkgConfigQuery_struct) =>
+  FlxPkgConfig::FlxPkgConfigQuery (
+    query=a.query,
+    getpkgfield=a.getpkgfield,
+    getpkgfield1=a.getpkgfield1,
+    getpkgfieldopt=a.getpkgfieldopt,
+    getpkgfielddflt=a.getpkgfielddflt,
+    getclosure=a.getclosure
+  )
+;
+
+export mk_pkgconfig_query
+  of (FlxPkgConfigQuery_struct)
+  as "flx_pkgconfig_query"
+;
+

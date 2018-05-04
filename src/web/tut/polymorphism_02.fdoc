@@ -1,0 +1,93 @@
+@h1 Type Constraints
+Felix provides a simple system of type constraints.
+The need for type constraints arose when binding C:
+@felix
+class Constraints {
+type Int = "int";
+type Long = "long";
+ctor Int : int = "$1";
+ctor Long: long= "$1";
+ctor int : Int = "$1";
+ctor long: Long= "$1";
+fun add: Int * Int -> Int = "$1+$2";
+fun add: Long * Long -> Long = "$1+$2";
+instance Str[Int] { fun str(x:Int) => str (int x); }
+instance Str[Long] { fun str(x:Long) => str (long x); }
+@
+C has a lot of integer types and writing out all the operators
+for all the types is boring, error prone, and slows down compilation.
+If you also wanted to allow mixed operators you'd need to add:
+@felix
+fun add: Int * Long -> Long = "$1+$2";
+fun add: Long * Int -> Long = "$1+$2";
+@
+and you can see we would rapidly get into an untenable combinatorial
+explosion.
+
+To solve the problem we use type constraints.
+
+First we introduce a construction to make a set of types:
+@felix
+typedef integers = typesetof(Int, Long);
+@
+Now we write polymorphic functions with type constraints:
+@felix
+fun add[I in integers]: I * I -> I = "$1+$2";
+@
+Here the type variable @{I} may only be @{int} or @{long}.
+If you wanted to support mixed addition:
+@felix
+fun add[I in integers, J in integers]: I * J -> I = "(?1)($1+$2)";
+@
+Note carefully the difference between these two functions:
+in the first function @{I} is set to either @{int} or @{long}
+and so only two @{int}s or two @{long}s can be added.
+
+In the second case, @{I} and @{J} are set independently
+to either @{int} or @{long} which allows any combination 
+to be added.
+
+There is a shorthand for the second formulation:
+@felix
+fun add: !integers * !integers -> int = "(int)($1+$2)";
+@
+
+but note the downside: lacking names for the type variables we must
+return a fixed type. This notation, however, if exceptionally useful
+when binding external C libraries:
+@felix
+header myf = "int f(int, int);";
+fun f: !integers * !integers -> int = "f($1, $2)" requires myf;
+@
+
+The reason this is <em>so</em> useful is that if we just lifted the
+signature of @{f} from C, we'd be ignoring the fact that the C programmer
+has automatic conversions and can call {f(42L, 23u)}, which would
+fail in Felix because it has no automatic conversions. The user
+would have to cast every argument to exactly the right type which is
+not practical. By using constrained polymorphism, we can make
+all the calls that work in C work in Felix, and by using the shorthand
+notation the overhead specifying the function is minimal.
+
+When Felix performs overload resolution, initially candidates are found
+without considering type constraints; that is, as if the type variables
+were able to bind to any type.
+
+Then, the type constraints are checked and candidates failing to meet 
+the constraints are rejected. For example:
+@felix
+fun f[T in integers]: T -> T = "$1+1";
+fun f[T in floats]: T -> T = "$1+2";
+println$ (f 1.2), f (Int 1);
+@
+Type sets also support the set union operator:
+@felix
+typedef mynumbers = integers \cup floats;
+} // end class Constraints
+@
+Note that the typesets @{ints} and @{floats}, along with some other
+basic type sets, are defined in the standard library: 
+
+@felix std/scalar/ctypedefs.flx
+
+

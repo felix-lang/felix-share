@@ -1,0 +1,10 @@
+#line 534 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax addexpr
+{
+  //$ Addition: left non-associative.
+  x[ssum_pri] := x[>ssum_pri] ("+" x[>ssum_pri])+ =># "(chain 'ast_sum _1 _2)" note "add";
+
+  //$ Subtraction: left associative.
+  x[ssubtraction_pri] := x[ssubtraction_pri] "-" x[sproduct_pri] =># "(Infix)";
+}
+

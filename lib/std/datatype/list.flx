@@ -1,0 +1,637 @@
+#line 13 "/Users/skaller/felix/src/packages/lists.fdoc"
+open class List
+{
+  union list[T] = | Empty | Snoc of list[T] * T;
+  fun _match_ctor_Cons[T] : list[T] -> bool = "!!$1";
+  inline fun _ctor_arg_Cons[T]: list[T] -> T * list[T] =
+    "reinterpret<#0>(flx::list::snoc2cons<?1>($1))"
+    requires snoc2cons_h
+  ;
+  inline fun Cons[T] (h:T, t:list[T]) => Snoc (t,h);
+
+  header snoc2cons_h = """
+    namespace flx { namespace list {
+      template<class T> struct snoc { void *mem_0; T mem_1; };
+      template<class T> struct cons { T mem_0; void * mem_1; };
+      template<class T> cons<T> snoc2cons (void *x) {
+        return cons<T> {((snoc<T>*)x)->mem_1, ((snoc<T>*)x)->mem_0};
+      }
+    }}
+  """;
+
+#line 36 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ The second list is made the tail of the
+  //$ list stored at the location pointed at by the first argument.
+  //$ If the first list is empty, the variable will point
+  //$ at the second list. This operation is DANGEROUS because
+  //$ it is a mutator: lists are traditionally purely functional.
+
+  // NOTE: this will fail if the second argument is named "p"!
+  // fix as for rev, rev_last!
+  proc splice[T] : &list[T] * list[T] =
+    """
+    { // list splice
+      //struct node_t { ?1 elt; void *tail; };
+      struct node_t { void *tail; ?1 elt; };
+      void **p = $1;
+      while(*p) p = &((node_t*)FLX_VNP(*p))->tail;
+      *p = $2;
+    }
+    """
+  ;
+
+#line 59 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ In place list reversal: unsafe!
+  // second arg is a dummy to make overload work
+  proc rev[T,PLT=&list[T]] : &list[T] = "_rev($1,(?1*)0);" requires _iprev_[T,PLT];
+
+  body _iprev_[T,PLT]=
+    """
+    static void _rev(?2 plt, ?1*) // second arg is a dummy
+    { // in place reversal
+      //struct node_t { ?1 elt; void *tail; };
+      struct node_t { void *tail; ?1 elt; };
+      void *nutail = 0;
+      void *cur = *plt;
+      while(cur)
+      {
+        void *oldtail = ((node_t*)FLX_VNP(cur))->tail;   // save old tail in temp
+        ((node_t*)FLX_VNP(cur))->tail = nutail;          // overwrite current node tail
+        nutail = cur;                                   // set new tail to current
+        cur = oldtail;                                  // set current to saved old tail
+      }
+      *plt = nutail;                                    // overwrite
+    }
+    """
+  ;
+
+#line 86 "/Users/skaller/felix/src/packages/lists.fdoc"
+  // in place list reversal, also returns the last element
+  // as a list, empty iff the original list is
+  // unsafe!
+  proc rev_last[T,PLT=&list[T]] : &list[T] * &list[T] = "_rev_last($1,$2,(?1*)0);" requires _rev_last_[T,PLT];
+
+  body _rev_last_[T,PLT]=
+    """
+    static void _rev_last(?2 p1, ?2 p2, ?1*)
+    { // in place reversal returns tail as well
+      //struct node_t { ?1 elt; void *tail; };
+      struct node_t { void *tail; ?1 elt; };
+      void *nutail = (void*)0;                 // new temp tail
+      void *cur = *p1;                         // list to reverse
+      void *last = cur;                        // save head
+      while(cur)
+      {
+        void *oldtail = ((node_t*)FLX_VNP(cur))->tail;            // set old tail to current's tail
+        ((node_t*)FLX_VNP(cur))->tail = nutail;                   // set current's tail to nutail
+        nutail = cur;                                            // set nutail to current
+        cur = oldtail;                                           // set current to old tail
+      }
+      *p1 = nutail;                                              // reversed list
+      *p2 = last;                                                // original lists tail
+    }
+    """
+  ;
+
+#line 117 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Copy a list.
+  fun copy[T] (x:list[T]):list[T]= {
+    var y = rev x;
+    rev (&y);
+    return y;
+  }
+
+#line 127 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Copy a list, and return last element as a list,
+  //$ empty if original list was empty.
+  proc copy_last[T] (inp:list[T], out:&list[T], last:&list[T]) {
+    out <- rev inp;
+    rev_last (out, last);
+  }
+
+
+#line 138 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Make an empty list.
+  ctor[T] list[T] () => Empty[T];
+
+#line 145 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Make a list with one element.
+  //$ NOTE: list (1,2) is a list of 2 ints.
+  //$ To get a list of one pair use list[int*int] (1,2) instead!
+  ctor[T] list[T] (x:T) => Snoc(Empty[T],x);
+
+#line 152 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Make a list from an array.
+  ctor[T,N] list[T] (x:array[T, N]) = {
+    var o = Empty[T];
+    if x.len > 0uz do
+      for var i in x.len.int - 1 downto 0 do
+        o = Snoc(o,x.i);
+      done
+    done
+    return o;
+  }
+
+#line 167 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ List comprehension:
+  //$ Make a list from a stream.
+  fun list_comprehension[T] (f: (1->opt[T])) = {
+    var ff = f;
+    fun aux (l:list[T]) = {
+      var x = ff();
+      return
+        match x with
+       | Some elt => aux (Snoc(l,elt))
+       | #None => rev l
+       endmatch
+      ;
+    }
+    return aux Empty[T];
+  }
+
+#line 187 "/Users/skaller/felix/src/packages/lists.fdoc"
+//$ List comprehension:
+  //$ Make a list from a stream.
+  ctor[T] list[T](f: (1->opt[T])) => list_comprehension f;
+
+#line 193 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Contrue a list as an array value
+  instance[T] ArrayValue[list[T],T] {
+#line 197 "/Users/skaller/felix/src/packages/lists.fdoc"
+    //$ Return umber of elements in a list.
+    pure fun len (x:list[T]) = {
+      fun aux (acc:size) (x:list[T]) =>
+        match x with
+        | #Empty => acc
+        | Snoc(t,_) => aux (acc + 1uz) t
+        endmatch
+      ;
+      return aux 0uz x;
+    }
+#line 209 "/Users/skaller/felix/src/packages/lists.fdoc"
+    //$ get n'th element
+    pure fun unsafe_get: list[T] * size -> T =
+      | Snoc(_,h), 0uz => h
+      | Snoc(t,_), i => unsafe_get (t, i - 1uz)
+    ;
+
+#line 217 "/Users/skaller/felix/src/packages/lists.fdoc"
+    //$ Apply a procedure to each element of a list.
+    proc iter (_f:T->void) (x:list[T]) {
+      match x with
+      | #Empty => {}
+      | Snoc(t,h) => { _f h; iter _f t; }
+      endmatch
+      ;
+    }
+
+#line 228 "/Users/skaller/felix/src/packages/lists.fdoc"
+    //$ Traditional left fold over list (tail rec).
+    fun fold_left[U] (_f:U->T->U) (init:U) (x:list[T]):U =
+    {
+      fun aux (init:U) (x:list[T]):U =>
+        match x with
+        | #Empty => init
+        | Snoc(t,h) => aux (_f init h) t
+        endmatch
+      ;
+      return aux init x;
+    }
+
+#line 242 "/Users/skaller/felix/src/packages/lists.fdoc"
+    //$ Right fold over list (not tail rec!).
+    fun fold_right[U] (_f:T->U->U) (x:list[T]) (init:U):U =
+    {
+      fun aux (x:list[T]) (init:U):U =>
+        match x with
+        | #Empty => init
+        | Snoc(t,h) => _f h (aux t init)
+        endmatch
+      ;
+      return aux x init;
+    }
+
+  }
+
+#line 259 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Test if a list is empty.
+  pure fun is_empty[T] : list[T] -> 2 =
+    | #Empty => true
+    | _ => false
+  ;
+
+#line 267 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Tail of a list, abort with match failure if list is empty.
+  pure fun tail[T] (x:list[T]) : list[T] = {
+    match x with
+    | Snoc(t,_) => return t;
+    endmatch;
+  }
+
+#line 276 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Head of a list, abort with match failure if list is empty.
+  pure fun head[T] (x:list[T]) : T = {
+    match x with
+    | Snoc(_,h) => return h;
+    endmatch;
+  }
+
+#line 287 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ map a list, return mapped list in reverse order (tail rec).
+  fun rev_map[T,U] (_f:T->U) (x:list[T]): list[U] = {
+    fun aux (inp:list[T]) (out:list[U]) : list[U] =>
+      match inp with
+      | #Empty => out
+      | Snoc(t,h) => aux t (Snoc(out,_f(h)))
+      endmatch
+    ;
+    return aux x Empty[U];
+  }
+
+#line 302 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ map a list (tail-rec).
+  //  tail rec due to in-place reversal of result.
+  fun map[T,U] (_f:T->U) (x:list[T]): list[U] =
+  {
+    var r = rev_map _f x;
+    rev$ &r;
+    return r;
+  }
+
+#line 314 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ reverse a list (tail rec).
+  pure fun rev[T] (x:list[T]):list[T]= {
+    fun aux (x:list[T]) (y:list[T]) : list[T] =
+    {
+      return
+        match x with
+        | #Empty => y
+        | Snoc(t,h) => aux t (Snoc(y,h))
+        endmatch
+      ;
+    }
+    return aux x Empty[T];
+  }
+
+#line 331 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Zip two lists into a list of pairs.
+  //$ Zips to length of shortest list.
+  fun zip2[T1,T2] (l1: list[T1]) (l2: list[T2]) : list[T1 * T2] =
+  {
+    fun aux (l1: list[T1]) (l2: list[T2]) (acc: list[T1 * T2]) =>
+      match l1, l2 with
+      | Snoc(t1,h1), Snoc(t2,h2) => aux t1 t2 (Snoc (acc, (h1, h2)))
+      | _ => rev acc
+      endmatch
+    ;
+    return aux l1 l2 Empty[T1 * T2];
+  }
+
+#line 348 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Generate an ordered list of ints between low and high with given step.
+  //$ Low included, high not included.
+  fun range (low:int, high:int, step:int) =
+  {
+    fun inner(low:int, high:int, step:int, values:list[int]) =
+    {
+      return
+        if high < low
+          then values
+          else inner(low, high - step, step, Snoc(values,high))
+          endif
+      ;
+    }
+
+    // reverse low and high so we can do negative steps
+    lo, hi, s := if low < high
+      then low, high, step
+      else high, low, -step
+      endif;
+
+    // adjust the high to be the actual last value so we don't
+    // have to reverse the list
+    n := hi - lo - 1;
+
+    return if s <= 0
+      then Empty[int]
+      else inner(lo, lo + n - (n % s), s, Empty[int])
+      endif
+    ;
+  }
+
+#line 381 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Range with step 1.
+  fun range (low:int, high:int) => range(low, high, 1);
+
+#line 387 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Range from 0 to num (excluded).
+  fun range (num:int) => range(0, num, 1);
+
+#line 393 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Concatenate two lists.
+  fun join[T] (x:list[T]) (y:list[T]):list[T] =
+  {
+    if is_empty x do
+      return y;
+    else
+      var z: list[T];
+      var last: list[T];
+      copy_last (x,&z,&last);
+      splice (&last, y);
+      return z;
+    done;
+  }
+
+  //$ Concatenate two lists.
+  pure fun + [T] (x:list[T], y: list[T]):list[T] => join x y;
+
+  proc += [T] (x:&list[T], y: list[T]) => x <- join (*x) y;
+
+#line 414 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Prepend element to head of list.
+  pure fun + [T] (x:T, y:list[T]):list[T] => Snoc(y,x);
+
+#line 420 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Append element to tail of list (slow!).
+  noinline fun + [T] (x:list[T], y:T):list[T] => rev$ Snoc (rev x,y);
+
+  //$ Append element to tail of list (slow!).
+  proc += [T] (x:&list[T], y:T) { x <- *x + y; }
+
+  //$ Prepend element to head of list (fast!).
+  proc -= [T] (x:&list[T], y:T) { x <- y ! *x; }
+
+
+#line 438 "/Users/skaller/felix/src/packages/lists.fdoc"
+
+noinline fun outer_product[T] (x:list[list[T]]) (y:list[list[T]]): list[list[T]] =
+{
+  var res = Empty[list[T]];
+
+  for xelt in x
+  for yelt in y
+    perform res = (xelt + yelt) ! res;
+  return res;
+}
+
+
+#line 452 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Concatenate all the lists in a list of lists.
+  noinline fun cat[T] (x:list[list[T]]):list[T] =
+  {
+     return
+       match x with
+       | #Empty => Empty[T]
+       | Snoc(t,h) => fold_left join of (list[T]) h t
+       endmatch
+     ;
+   }
+
+#line 466 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Concatenate all the strings in a list with given separator.
+  pure fun cat (sep:string) (x:list[string]):string =
+  {
+    var n = 0uz;
+    for s in x perform n += s.len+1uz;
+    var r = "";
+    reserve (&r,n);
+    match x with
+    | #Empty => return r;
+    | Snoc (tail, head) =>
+      r = head;
+      var tl = tail;
+  next:>
+      match tl with
+      | #Empty => return r;
+      | Snoc(t,h) =>
+        r += sep + h;
+        tl = t;
+        goto next;
+      endmatch;
+    endmatch;
+    return r;
+  }
+
+#line 492 "/Users/skaller/felix/src/packages/lists.fdoc"
+  fun catmap[T] (sep:string) (f:T -> string) (ls: list[T]) =>
+    cat sep (map f ls)
+  ;
+
+  fun strcat[T with Str[T]]  (sep: string) (ls: list[T]) =>
+    catmap sep (str of (T)) ls
+  ;
+
+  fun strcat[T with Str[T]]  (ls: list[T]) =>
+    catmap ", " (str of (T)) ls
+  ;
+
+
+#line 508 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Return true if one value in a list satisfies the predicate.
+  fun mem[T] (eq:T -> bool) (xs:list[T]) : bool =>
+    match xs with
+    | #Empty => false
+    | Snoc(t,h) => if eq(h) then true else mem eq t endif
+    endmatch
+  ;
+
+  //$ Return true if one value in the list satisfies the relation
+  //$ in the left slot with
+  //$ the given element on the right slot.
+  fun mem[T, U] (eq:T * U -> bool) (xs:list[T]) (e:U) : bool =>
+    mem (fun (x:T) => eq(x, e)) xs
+  ;
+
+  //$ Construe a list as a set, imbuing it with a membership
+  //$ test, provided the element type has an equality operator.
+  instance[T with Eq[T]] Set[list[T],T] {
+    fun \in (x:T, a:list[T]) => mem[T,T] eq of (T * T) a x;
+  }
+
+#line 532 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ return option of the first element in a list satisfying the predicate.
+  fun find[T] (eq:T -> bool) (xs:list[T]) : opt[T] =>
+    match xs with
+    | #Empty => None[T]
+    | Snoc(t,h) => if eq(h) then Some h else find eq t endif
+    endmatch
+  ;
+
+
+  //$ Return option the first value in the list satisfies the relation
+  //$ in the left slot with
+  //$ the given element on the right slot.
+  fun find[T, U] (eq:T * U -> bool) (xs:list[T]) (e:U) : opt[T] =>
+    find (fun (x:T) => eq(x, e)) xs;
+  ;
+
+  //$ Return a sub list with elements satisfying the given predicate.
+  noinline fun filter[T] (P:T -> bool) (x:list[T]) : list[T] =
+  {
+    fun aux (inp:list[T], out: list[T]) =>
+      match inp with
+      | #Empty => rev out
+      | Snoc(t,h) =>
+        if P(h) then aux(t,Snoc(out,h))
+        else aux (t,out)
+        endif
+      endmatch
+    ;
+    return aux (x,Empty[T]);
+  }
+
+  //$ Push element onto front of list if there isn't one in the
+  //$ list already satisfying the relation.
+  fun prepend_unique[T] (eq: T * T -> bool) (x:list[T]) (e:T) : list[T] =>
+    if mem eq x e then x else Snoc(x,e) endif
+  ;
+
+  //$ Attach element to tail of list if there isn't one in the
+  //$ list already satisfying the relation.
+  fun insert_unique[T] (eq: T * T -> bool) (x:list[T]) (e:T) : list[T] =>
+    if mem eq x e then x else rev$ Snoc (rev x,e) endif
+  ;
+
+  //$ Remove all elements from a list satisfying relation.
+  fun remove[T] (eq: T * T -> bool) (x:list[T]) (e:T) : list[T] =>
+    filter (fun (y:T) => not eq (e,y)) x
+  ;
+
+  //$ Attach element to tail of list if there isn't one in the
+  //$ list already satisfying the relation (tail-rec).
+  noinline fun append_unique[T] (eq: T * T -> bool) (x:list[T]) (e:T) : list[T] = {
+    fun aux (inp:list[T], out: list[T]) =>
+      match inp with
+      | #Empty => rev$ Snoc(out,e)
+      | Snoc(t,h) =>
+        if not eq (h, e) then aux(t,Snoc(out,h))
+        else aux (t,out)
+        endif
+      endmatch
+    ;
+    return aux (x,Empty[T]);
+  }
+
+  //$ Take the first k elements from a list.
+  fun take[T] (k:int) (lst:list[T]) : list[T] =>
+    if k <= 0 then
+      list[T] ()
+    else
+      match lst with
+        | #Empty => list[T] ()
+        | Snoc(xs,x) => join (list[T] x) (take[T] (k - 1) xs)
+      endmatch
+    endif
+  ;
+
+  //$ Drop the first k elements from a list.
+  fun drop[T] (k:int) (lst:list[T]) : list[T] =>
+    if k <= 0 then
+      lst
+    else
+      match lst with
+        | #Empty => list[T] ()
+        | Snoc(xs,x) => drop (k - 1) xs
+    endif
+  ;
+
+  fun scroll1[T] (left: list[T], right: list[T]) =>
+    match left with
+    | h ! t => t, h ! right
+    | _ => left, right
+  ;
+  fun scroll[T] (lr:list[T] * list[T]) (n:int) =>
+    if n <= 0 then lr else
+    scroll (scroll1 lr) (n - 1)
+  ;
+
+  // return revhead, tail where revhead is first k elements
+  // of lst, in reverse order, and tail is what is left over
+  // cannot fail: if k is not big enough the tail just ends
+  // up empty and the function is equivalent to rev.
+  fun revsplit[T] (k:int) (lst:list[T]) : list[T] * list[T] =>
+    let fun aux (k:int) (revhead:list[T]) (tail:list[T]) =>
+      if k <=0 then revhead,tail
+      else match tail with
+      | #Empty => revhead, tail
+      | h ! t => aux (k - 1) (h!revhead) t
+      endmatch
+    in aux k Empty[T] lst
+  ;
+
+  fun list_eq[T with Eq[T]] (a:list[T], b:list[T]): bool =>
+    match a, b with
+    | #Empty, #Empty => true
+    | #Empty, _ => false
+    | _,#Empty => false
+    | Snoc(ta,ha), Snoc(tb,hb) =>
+      if not (ha == hb) then false
+      else list_eq (ta, tb)
+      endif
+    endmatch
+  ;
+  instance[T with Eq[T]] Eq[list[T]] {
+    fun ==(a:list[T], b:list[T])=> list_eq(a,b);
+  }
+
+#line 659 "/Users/skaller/felix/src/packages/lists.fdoc"
+  //$ Sort a list with given less than operator, which must be
+  //$ total order. Uses varray sort (which uses STL sort).
+  fun sort[T] (lt:T*T->bool) (x:list[T])=
+  {
+    val n = len x;
+    var a = varray[T]$ n;
+    iter (proc (e:T) { a+=e; }) x;
+    sort lt a;
+    var r = Empty[T];
+    if n > 0uz do
+      for var i in n - 1uz downto 0uz do r = Snoc(r,a.i); done
+    done
+    return r;
+  }
+
+  //$ Sort a list with default total order.
+  //$ Uses varray sort (which uses STL sort).
+  fun sort[T with Tord[T]](x:list[T])=> sort lt x;
+
+#line 680 "/Users/skaller/felix/src/packages/lists.fdoc"
+  instance[T] Iterable[list[T],T] {
+  //$ Convert a list to a stream.
+    gen iterator (var xs:list[T]) () = {
+      while true do
+        match xs with
+        | Snoc(t,h) => xs = t; yield Some h;
+        | #Empty => return None[T];
+        endmatch;
+      done
+    }
+  }
+  inherit[T] Streamable[list[T],T];
+
+  inherit [T with Str[T]] Str[list[T]];
+  inherit [T with Eq[T]] Set[list[T],T];
+  inherit[T] ArrayValue[list[T],T];
+
+}
+
+open [T with Eq[T]] Eq[List::list[T]];
+
+//open [T with Str[T]] Str[list[T]];
+//open [T with Eq[T]] Set[list[T],T];
+
+// display list as string given element type with str operator
+// elements are separated by a comma and one space
+instance[T with Show[T]] Str[List::list[T]] {
+  noinline fun str (xs:List::list[T]) =>
+    'list(' +
+      match xs with
+      | #Empty => ''
+      | Snoc(os,o) =>
+          List::fold_left (
+            fun (a:string) (b:T):string => a + ', ' + (repr b)
+          ) (repr o) os
+      endmatch
+    + ')'
+  ;
+}
+

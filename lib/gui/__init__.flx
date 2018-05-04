@@ -1,0 +1,58 @@
+#line 32 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "sdl/SDL2";
+include "sdl/SDL_ttf";
+include "sdl/SDL_image";
+#line 39 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/init";
+include "gui/types";
+include "gui/events";
+include "gui/font";
+#line 59 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/color";
+include "gui/surface";
+include "gui/drawable";
+include "gui/drawchain";
+include "gui/window";
+include "gui/window_controller_interface";
+include "gui/window_controller";
+include "gui/window_manager";
+
+#line 89 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/button";
+include "gui/menu";
+#line 95 "/Users/skaller/felix/src/packages/gui.fdoc"
+include "gui/line_buffer_interface";
+include "gui/line_buffer_object";
+include "gui/line_buffer_display_controller_interface";
+include "gui/line_buffer_display_controller";
+include "gui/line_editor";
+#line 106 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGui
+{
+ inherit FlxGuiInit;
+ inherit FlxGuiTypes;
+ inherit FlxGuiEvents;
+ inherit FlxGuiFont;
+ inherit FlxGuiColor;
+ inherit FlxGuiSurface;
+ inherit FlxGuiDrawable;
+ inherit FlxGuiDrawChain;
+
+ inherit FlxGuiWindow;
+ inherit FlxGuiWindowController;
+ inherit FlxGuiWindowControllerInterface;
+ inherit FlxGuiWindowManager;
+
+ inherit FlxGuiButton;
+
+ inherit FlxGuiMenu;
+
+ // text field editor
+ inherit FlxGuiLineBufferInterface;
+ inherit FlxGuiLineBuffer;
+ inherit FlxGuiLineBufferDisplayControllerInterface;
+ inherit FlxGuiLineBufferDisplayController;
+ inherit FlxGuiLineEditor;
+
+} // class FlxGui
+

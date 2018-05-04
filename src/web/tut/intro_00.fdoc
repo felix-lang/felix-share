@@ -1,0 +1,36 @@
+@h2 Introduction
+This tutorial attempts to teach Felix from the ground up.
+It is aimed at people who know some computer science
+and are familiar with C++.
+
+We try hard to introduce tutorial text that depends only
+on knowledge of the Felix language introduced in previous sections,
+however this is not always possible because of the integrated
+nature of programming systems.
+
+Because of this ordering constraint, we end up covering
+many topics briefly, then eventually in more detail,
+so we can write more and more sophisticated programs.
+Unfortunately dependency ordering does not agree with
+covering topics in depth in logical categories.
+
+So this tutorial text should be read in parallel with
+others, including the introduction of the abstract
+language, which focuses on semantics and
+tries to avoid precisely what this tutorial is all about:
+how the system is implemented.
+
+This tutorial also does not cover the use of the Felix
+tool set, installation, or configuration.
+
+The content of this tutorial is literate programmed with a simple
+format. A special tool is used to extract the code and expected results
+so that the code in the tutorial can be checked for correctness.
+This means the sample code on each page is a complete program
+(except when we link to library code).
+
+As a result, the tutorial may not be entirely idea for
+reading, since it has to also present a complete program.
+I hope the reader excuses this understanding the verifying
+that the code is correct automatically is important too.
+

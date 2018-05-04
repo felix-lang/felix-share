@@ -1,0 +1,299 @@
+#line 1000 "/Users/skaller/felix/src/packages/buildtools.fdoc"
+include "std/felix/toolchain_clang_config";
+include "std/felix/toolchain_interface";
+include "std/felix/flx_pkgconfig";
+include "std/felix/flx_pkg"; // only for "fix2word_flags"
+include "std/felix/flx_cp";
+include "std/felix/flx/flx_depchk";
+include "std/pthread/threadpool";
+include "std/felix/flx_mklib";
+
+class FlxRtlBuild
+{
+
+  private fun / (x:string,y:string) => Filename::join(x,y);
+
+  proc ehandler () {
+    eprintln$ "Flx_buildtools:FlxRtlBuild flx_pkgconfig temporary ehandler invoked";
+    System::exit 1;
+  }
+
+
+  proc make_rtl (
+    build:string, target:string,
+    boot_package:string,
+    tmpdir:string,
+    static_only:bool,
+    noexes:bool,
+    debug: bool
+  )
+  {
+    val pkgdir = build / target / 'config';
+    val srtl = build / 'share' / 'lib' / 'rtl';
+    val hrtl = build / target / 'lib' / 'rtl';
+    val bin = build / target / 'bin';
+    val repo = build / 'share'; // excludes "src" cause that's in the packages
+
+    proc dbug (x:string) => if debug call println$ '[make_rtl] ' + x;
+    Directory::mkdirs tmpdir;
+    Directory::mkdirs hrtl;
+    Directory::mkdirs srtl;
+    println$ "bootpkg=" + boot_package + " build image=" + build;
+
+    var db = FlxPkgConfig::FlxPkgConfigQuery (list[string] pkgdir);
+
+    gen getbootfield (field:string) => db.getpkgfield1 ehandler (boot_package, field);
+    gen gettoolchain () => db.getpkgfield1 ehandler ("toolchain","toolchain");
+    var toolchain = gettoolchain();
+    println$ "toolchain    : " + str toolchain;
+
+    var allpkgs = db.getclosure ehandler boot_package;
+    //println$ "Closure      : " + str allpkgs;
+
+    for pkg in allpkgs begin
+      var lib = db.getpkgfielddflt ehandler (pkg,"library");
+      var srcdir = db.getpkgfielddflt ehandler (pkg,"srcdir");
+      println$ f"%15S %20S %20S" (pkg,lib,srcdir);
+    end
+
+    var toolchain-maker =
+      Dynlink::load-plugin-func1 [toolchain_t,clang_config_t]
+      (
+        dll-name=toolchain,
+        setup-str="",
+        entry-point=toolchain
+      )
+    ;
+    for pkg in allpkgs begin
+      var library = db.getpkgfielddflt ehandler (pkg,"library");
+      var srcdir = db.getpkgfielddflt ehandler (pkg,"srcdir");
+      var src = db.getpkgfield ehandler (pkg,"src");
+      if library != "" do
+        if srcdir == "" do
+          println$ "Package error, package " + pkg + " library " + library + " No srcdir specified";
+          System::exit(1);
+        done
+        if src.is_empty do
+          println$ "Package error, package " + pkg + " library " + library + " No src files specified";
+          System::exit(1);
+        done
+        var src_dir =  build / 'share';
+        var share_rtl = src_dir / 'lib' / 'rtl';
+        var target_dir =  build / target / 'lib' / 'rtl';
+        var result = FlxLibBuild::make_lib (db,toolchain-maker, src_dir, target_dir, share_rtl, pkg,tmpdir, static_only, debug) ();
+        if not result do
+          eprintln$ "Library build " + pkg + " failed";
+          System::exit 1;
+        done
+      else
+        println$ "------------";
+        println$ "External package " + pkg;
+        println$ "------------";
+      done
+    end
+
+    // make drivers
+    begin
+      println$ "------------";
+      println$ "Make drivers";
+      println$ "------------";
+      var srcdir = repo/"src"/"flx_drivers";
+      var config =
+        (
+          header_search_dirs= list[string] (hrtl, srcdir, srtl),
+          macros= Empty[string],
+          ccflags = Empty[string],
+          library_search_dirs= list[string] ("-L"+hrtl),
+          dynamic_libraries= Empty[string],
+          static_libraries= Empty[string], //############ FIXME or the link won't work!
+          debugln = dbug
+        )
+      ;
+      fun prgname (file:string) => let
+          dstprg = file.Filename::strip_extension + #(toolchain.executable_extension) in
+          bin / dstprg
+      ;
+
+      var toolchain = toolchain-maker config;
+      println$ #(toolchain.whatami);
+      proc cobj_static (s:string,dst:string) {
+        var src = srcdir/s;
+        println$ "Compiling [static] " + src + " -> " + dst;
+        var fresh = cxx_depcheck (toolchain, src, dst);
+        var result = if fresh then 0 else
+          toolchain.cxx_static_object_compiler(src=src, dst=dst)
+        ;
+        if result != 0 do
+          println$ "Driver compile "+ s + " -> " + dst +" FAILED";
+          System::exit 1;
+        done
+      }
+      proc cobj_dynamic (s:string,dst:string) {
+        var src = srcdir/s;
+        if static_only do
+          println$ "Skipping [dynamic] " + src + " -> " + dst + " due to flag";
+        else
+          println$ "Compiling [dynamic] " + src + " -> " + dst;
+          var fresh = cxx_depcheck (toolchain, src, dst);
+          var result = if fresh then 0 else
+            toolchain.cxx_dynamic_object_compiler(src=src, dst=dst)
+          ;
+          if result != 0 do
+            println$ "Driver compile "+ s + " -> " + dst +" FAILED";
+            System::exit 1;
+          done
+        done
+      }
+
+      // VERY CONFUSING!
+      // This one is for full static linkage, RTL static linked
+      cobj_static("flx_run_lib_static.cpp",hrtl/"flx_run_lib_static"+#(toolchain.static_object_extension));
+
+      // This run is for linking an executable which uses the RTL dynamic linked
+      cobj_dynamic("flx_run_lib_static.cpp",hrtl/"flx_run_lib_static"+#(toolchain.dynamic_object_extension));
+
+      // This one is for loading a program as a DLL, i.e. for use in flx_run.exe
+      cobj_dynamic("flx_run_lib_dynamic.cpp",hrtl/"flx_run_lib_dynamic"+#(toolchain.dynamic_object_extension));
+
+      cobj_static("flx_arun_lib_static.cpp",hrtl/"flx_arun_lib_static"+#(toolchain.static_object_extension));
+      cobj_dynamic("flx_arun_lib_static.cpp",hrtl/"flx_arun_lib_static"+#(toolchain.dynamic_object_extension));
+      cobj_dynamic("flx_arun_lib_dynamic.cpp",hrtl/"flx_arun_lib_dynamic"+#(toolchain.dynamic_object_extension));
+
+      cobj_static("flx_run_main.cxx",hrtl/"flx_run_main"+#(toolchain.static_object_extension));
+      cobj_dynamic("flx_run_main.cxx",hrtl/"flx_run_main"+#(toolchain.dynamic_object_extension));
+
+      cobj_static("flx_arun_main.cxx",hrtl/"flx_arun_main"+#(toolchain.static_object_extension));
+      cobj_dynamic("flx_arun_main.cxx",hrtl/"flx_arun_main"+#(toolchain.dynamic_object_extension));
+
+      proc prg(file:string) {
+        var exe = prgname file;
+        println$ "Linking [executable] " + exe;
+        var objs = list (
+          hrtl/file+"_lib_dynamic"+#(toolchain.dynamic_object_extension),
+          hrtl/file+"_main"+#(toolchain.dynamic_object_extension)
+        );
+        var result,libs = db.query$ list("--rec","--keeprightmost",
+          "--field=provides_dlib","--field=requires_dlibs",file);
+        libs = FlxPkg::fix2word_flags libs;
+        if result != 0 do
+          println$ "Driver pkgconfig query for "+ file+" FAILED";
+          System::exit 1;
+        done
+        if noexes do
+          println$ "Skipping executable link due to flag";
+        else
+          result = toolchain.dynamic_executable_linker(srcs=objs+libs, dst=exe);
+          if result != 0 do
+            println$ "Driver link  "+ file+" FAILED";
+            System::exit 1;
+          done
+        done
+      }
+      prg("flx_run");
+      prg("flx_arun");
+    end
+  }
+
+  proc flx_build(cmd: cmd_type)
+  {
+    make_rtl ( cmd.target_dir, cmd.target_bin, cmd.boot_package, cmd.tmp_dir, cmd.static_only, cmd.noexes, cmd.debug);
+    println$ "Build Complete";
+  }
+
+  proc print_help()
+  {
+    println$ "Usage: flx_build_rtl ";
+    println$ "";
+    println$ "# locations";
+    println$ "";
+    println$ "  --pkg=bootpkg (default: flx_rtl_core)";
+    println$ "  --target-dir=target_dir     default: build/trial";
+    println$ "  --target-bin=target_bin     default: host";
+    println$ "  --tmp-dir=tmp               default: build/rtl-tmp";
+    println$ "  --static                    static link libraries only";
+    println$ "  --noexes                    libraries only";
+    println$ "";
+    println$ "  --debug                     do stuff verbosely";
+    println$ "";
+    println$ "# Environment variables";
+    println$ "";
+    println$ "FLX_SHELL_ECHO=1              echo all shell callouts (system, popen)";
+    println$ "FLX_DEBUG_FLX=1               make 'flx' explain its processing decisions";
+    println$ "";
+    println$ "Purpose: Build new Felix target";
+    println$ "";
+    println$ "Ensures target_dir contains:";
+    println$ "";
+    println$ "  (a) Repository source in $target_dir/share/src";
+    println$ "  (b) Share library in $target_dir/share/lib";
+    println$ "  (c) config db, C++ headers, libraries and executables in $target_dir/$target_bin/*";
+    println$ "";
+    println$ "Compiles all C++ sources to libraries and executables";
+  }
+
+  typedef cmd_type = typeof (parse_args Empty[string]);
+
+  noinline fun parse_args (args: list[string]) =
+  {
+     var cmd = (
+       boot_package="",
+       target_dir="build"/"trial",
+       target_bin="host",
+       tmp_dir="build"/"rtl-tmp",
+       static_only=false,
+       noexes=false,
+       debug = false
+     );
+
+     for arg in args do
+       // location options
+       if prefix(arg,"--pkg=") do
+         &cmd.boot_package <- arg.[6 to];
+       elif prefix(arg,"--target-dir=") do
+         &cmd.target_dir <- arg.[13 to];
+       elif prefix(arg,"--target-bin=") do
+         &cmd.target_bin <- arg.[13 to];
+       elif prefix(arg,"--tmp-dir=") do
+         &cmd.tmp_dir <- arg.[10 to];
+       elif arg == "--static" do
+         &cmd.static_only <- true;
+       elif arg == "--noexes" do
+         &cmd.noexes<- true;
+       elif arg == "--debug" do
+         &cmd.debug <- true;
+
+       elif arg == "--help" do
+         print_help();
+         System::exit(0);
+       else
+         println$ "Unknown switch " + arg;
+         print_help();
+         System::exit(1);
+       done
+     done
+     if cmd.boot_package== "" perform &cmd.boot_package <- "flx_rtl_core";
+     return cmd;
+  }
+
+  noinline proc build_felix_rtl (xargs:list[string])
+  {
+    if xargs.len.int < 2 do
+      print_help();
+      System::exit(1);
+    done
+    var cmd = parse_args (tail xargs);
+    println$ "flx_build_rtl v1.8";
+    println$ "  build-package = " + cmd.boot_package;
+    println$ "  target-dir    = " + cmd.target_dir;
+    println$ "  target-bin    = " + cmd.target_bin;
+    println$ "  tmp-dir       = " + cmd.tmp_dir;
+    println$ "  static only   = " + cmd.static_only.str;
+    println$ "  no executables= " + cmd.noexes.str;
+    flx_build (cmd);
+  }
+
+}
+
+FlxRtlBuild::build_felix_rtl (#System::args);
+
+System::exit (0);

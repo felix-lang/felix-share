@@ -1,0 +1,159 @@
+@h1 Syntax Macro Processor Basics
+NOTE: Most macro features have been removed.
+
+@h2 Macro values
+The macro val statement defines a LHS symbol
+as the expansion of the RHS. The same
+value can be defined any number of times,
+a redefinition hides the preceding defintion
+until the end of the scope. Macro values
+are just compile time constants. They're scoped locally
+to each file.
+
+@felix
+macro val WIN32 = false;
+@
+
+@h2 Constant Expression Folding
+The Felix macro processor also performs constant folding;
+that is, evaluation of certain expressions involving
+only literals. The following operations are folded:
+<pre>
+  op                     descr
+  +int
+  -int
+  int+int
+  int-int
+  int*int
+  int/int
+  int%int
+  int&lt;int
+  int&gt;int
+  int&lt;=int
+  int&gt;=int
+  int==int
+  int!=int
+  string+string
+  string==string
+  string!=string
+  string*int             cat n copies
+  string string          cat
+  string int             cat ISO10646
+  not bool
+  bool &amp;&amp; bool
+  bool or bool
+  bool == bool
+  bool != bool
+  if bool then expr1 else expr2 endif
+</pre>
+The critical operation here is that a conditional
+with a constant first argument is replaced by one
+of the two expressions, and the other is elided.
+See the example for an application: the implication
+is that the elided expression, whilst it must be
+well formed syntactically, does not need to be
+type correct, nor do symbols in it need to be defined.
+
+Note that the fold uses compiler intrinsic operations
+on integers, bools, and strings: user defined functions
+are not applied and do not need to be defined.
+Consequently, the result may disagree with a user
+defined function applied at run time.  If necessary,
+constant folding can be blocked with the noexpand mark 'noexpand'.
+
+Note: the expressions
+<pre>
+  "" 999
+  u"" 999
+</pre>
+are semantically, but not physically equivalent.
+The first operation is the UTF-8 representation
+of 999, whilst the second is the UCS-4 value 999.
+
+@h2 Conditional compilation
+Felix does not provide any special conditional compilation operators:
+just use ordinary conditionals!
+
+The way this works is that Felix guarrantees to elide some unreachable
+code, as a result of folding constants. In particular values defined
+by {macro val} may be manifest compile time constants.
+
+For example:
+@felix
+macro val WIN32 = false;
+if WIN32 do
+  proc print_os () { println "Windows"; }
+else
+  proc print_os () { println "Unix"; }
+done
+print_os;
+@
+Constants for OS are constructed during configuration and prepended to
+all files during compilation by the {--import} switch.
+
+@h2 Expansion Barrier
+The symbol 'noexpand' can be used to block expansion.
+@felix
+val x = 1;
+val y = 2;
+macro val x = y;
+val ky = x; // ky == 2
+val kx = noexpand x; // kx == 1
+@
+
+@h2 For Loops
+Felix provides two a loop which iterates over tuples.
+@felix
+macro forall v in (1,2.0,"three") do println v; done;
+// equivalent to 
+println 1;
+println 2.0;
+println "three";
+@
+
+
+@h2 String representation
+The string representation of an expression can be obtained
+with the special operator _str. This is most useful for
+printing a variable name (but it works for any expression).
+Note the expanded value is stringized.
+@felix
+println$ _str (x + y);
+@
+
+@h2 Packing Tuples
+The Felix syntax macro processor treats tuples as lists.
+The for val construction can be used to iterate over
+list contents. Two primitive macro functions are provided
+for constructing tuples.
+
+The _tuple function takes one argument and makes a
+one element tuple. Note that the main Felix programming
+language does not allow one element tuples. The macro
+processor does though.
+
+The _tuple_cons function takes two arguments, an element
+and a tuple, and constructs a single tuple starting
+with the first argument followed by the elements of the
+second argument: this is the usual list cons function of
+functional programming languages.
+
+These two functions are most useful in recursive
+expansions, particularly when driven by user defined
+nontermial parses (see the next section).
+
+@h2 Scheme encoding
+An application or call of special name {_scheme} applied to a string
+is replaced by the expression or statement (resp) obtained by 
+evaluating the argument as scheme code and converting to Felix term
+in the same way as is done in the parser.
+
+This mechanism allows generation of arbitrary terms from string
+constants. If you want to generate code conditionally, this is the way.
+Scheme is a better code generator thani any macro processor!
+
+Note, this mechanism allows generating terms, but not modifying
+other terms! If you want to change the interpretation of terms
+you must write grammar productions parse them.
+
+

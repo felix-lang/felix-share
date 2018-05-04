@@ -1,0 +1,33 @@
+#line 297 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+include "std/pthread/pchannels";
+
+//$ Implement fork/join protocol.
+open class ForkJoin
+{
+  //$ Launch a set of pthreads and wait
+  //$ until all of them are finished.
+  proc concurrently_by_iterator (var it:1 -> opt[1->0])
+  {
+     // Make a channel to signal termination.
+     var iterm,oterm = mk_iopchannel_pair[int](); // should be unit but that bugs out at the moment
+     noinline proc manager (var p: 1->0) () { p(); write (oterm, 1); }
+     // Count the number of pthreads.
+     var count = 0;
+   again:>
+     match #it with
+     | Some p =>
+       ++count;
+       spawn_pthread$ manager p;
+      goto again;
+
+     | #None =>
+       while count > 0 do
+         C_hack::ignore (read iterm);
+         --count;
+       done
+     endmatch;
+  }
+
+  proc concurrently[T with Streamable[T,1->0]] (d:T) => concurrently_by_iterator d.iterator;
+
+}

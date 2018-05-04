@@ -1,0 +1,5 @@
+#line 4059 "/Users/skaller/felix/src/packages/grammar.fdoc"
+syntax python_grammar {
+  stmt := "export" "python" "fun" ssuffixed_name "as" sstring ";" =>#
+    "`(ast_export_python_fun ,_sr ,_4 ,_6)";
+}

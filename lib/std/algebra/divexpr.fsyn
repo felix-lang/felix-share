@@ -1,0 +1,17 @@
+#line 642 "/Users/skaller/felix/src/packages/algebra.fdoc"
+syntax divexpr
+{
+  //$ division: right associative low precedence fraction form
+  x[stuple_pri] := x[>stuple_pri] "\over" x[>stuple_pri] =># "(Infix)";
+
+  //$ division: left associative.
+  x[s_term_pri] := x[s_term_pri] "/" x[>s_term_pri] =># "(Infix)";
+
+  //$ remainder: left associative.
+  x[s_term_pri] := x[s_term_pri] "%" x[>s_term_pri] =># "(Infix)";
+
+  //$ remainder: left associative.
+  x[s_term_pri] := x[s_term_pri] "\bmod" x[>s_term_pri] =># "(Infix)";
+}
+
+

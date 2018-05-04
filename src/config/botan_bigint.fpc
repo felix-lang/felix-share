@@ -1,0 +1,4 @@
+Generated_from: 163 "/Users/skaller/felix/src/packages/botan.fdoc"
+Requires: botan
+includes: '"botan/bigint.h"' '"botan/numthry.h"'
+cflags: -I/usr/local/include/botan-2.0

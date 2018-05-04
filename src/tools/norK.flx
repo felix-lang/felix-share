@@ -1,0 +1,275 @@
+include "std/control/ts_bound_queue";
+
+	// get the prefix of the executables from the command line
+var exec_prefix = System::argv 1;
+
+// the executables with any arguments
+version := list$ exec_prefix+"version";
+
+hwclient := list$ exec_prefix+"hwclient";
+hwserver := list$ exec_prefix+"hwserver";
+
+wuclient := list$ exec_prefix+"wuclient";
+wuserver := list$ exec_prefix+"wuserver";
+wuproxy  := list$ exec_prefix+"wuproxy";
+
+mspoller := list$ exec_prefix+"mspoller";
+msreader := list$ exec_prefix+"msreader";
+
+rrbroker := list$ exec_prefix+"rrbroker";
+rrclient := list$ exec_prefix+"rrclient";
+rrserver := list$ exec_prefix+"rrserver";
+
+mtclient := list$ exec_prefix+"mtclient";
+mtserver := list$ exec_prefix+"mtserver";
+mtrelay  := list$ exec_prefix+"mtrelay";
+
+tasksink := list$ exec_prefix+"tasksink";
+taskvent := list$ exec_prefix+"taskvent";
+taskwork := list$ exec_prefix+"taskwork";
+taskwork2 := list$ exec_prefix+"taskwork2";
+tasksink2 := list$ exec_prefix+"tasksink2";
+
+
+// multi-process test groups
+group1 := 
+  "http://zguide.zeromq.org/page:all#Ask-and-Ye-Shall-Receive",
+  list( ("hwserver",hwserver), ("hwclient",hwclient))
+;
+
+
+group2 := 
+  "http://zguide.zeromq.org/page:all#Version-Reporting",
+  list (("version",version))
+;
+
+group3 :=
+  "http://zguide.zeromq.org/page:all#Getting-the-Message-Out",
+  list (
+    ("wuserver",wuserver), 
+    ("wuclient1",wuclient), ("wuclient2",wuclient), ("wuclient3",wuclient)
+  )
+;
+
+group4 :=
+  "http://zguide.zeromq.org/page:all#Divide-and-Conquer",
+  list (
+    ("taskvent",taskvent), 
+    ("taskwork1",taskwork), ("taskwork2",taskwork), ("taskwork3",taskwork), 
+    ("tasksink",tasksink)
+  )
+;
+
+group5 :=
+  "http://zguide.zeromq.org/page:all#Handling-Multiple-Sockets",
+  list (("mspoller",mspoller), ("msreader",msreader))
+;
+
+group6 :=
+  "http://zguide.zeromq.org/page:all#Handling-Errors-and-ETERM",
+  list (
+    ("taskvent",taskvent), 
+    ("taskwork21",taskwork2), ("taskwork22",taskwork2), ("taskwork23",taskwork2), 
+    ("tasksink3",tasksink2)
+  )
+;
+
+group7 := 
+  "http://zguide.zeromq.org/page:all#A-Publish-Subscribe-Proxy-Server",
+  list (
+    ("wuserver",wuserver),
+    ("wuclient1",wuclient), ("wuclient2",wuclient), 
+    ("wupoxy",wuproxy), 
+    ("wuclient3", wuclient), 
+    ("wuclient4",wuclient)
+  ) 
+  // NOTE: this will NOT work, because wuclient reads the wrong address
+;
+
+group8 :=
+  "http://zguide.zeromq.org/page:all#A-Request-Reply-Broker",
+  list (
+    ("rrclient1",rrclient), ("rrclient2",rrclient), ("rrclient3",rrclient), 
+    ("rrbroker", rrbroker), 
+    ("rrserver1",rrserver), ("rrserver2",rrserver), ("rrserver3",rrserver)
+  )
+;
+
+group9 := 
+  "http://zguide.zeromq.org/page:all#Multithreading-with-MQ",
+  list(("mtserver",mtserver))
+;
+
+group10 :=
+  "http://zguide.zeromq.org/page:all#Signaling-between-Threads",
+  list(("mtrelay",mtrelay))
+;
+
+fun pack_args(t:list[string]) = {
+  var out = array_alloc[+char] (t.len+1uz);
+  var i = 0;
+  for k in t do set(out,i,strdup k.cstr); ++i; done
+  set(out,i, C_hack::cast[+char] C_hack::null[char]);
+  return out;
+}
+
+fun make_args(p:list[string]) =>
+  let Cons (pn,_) = p in pn,pack_args p
+;
+
+open Process;
+
+noinline proc launch_managed_process (
+  var q: ts_bound_queue_t[string],  
+  var name:string, 
+  var inargs:list[string], 
+  var timelimit:double)
+{
+  gen setup()= { eprintln$ "BAD SETUP DONE"; return 1; }
+
+  //eprintln$ "name=" + name;
+  def val pn, val outargs = make_args inargs;
+  spawn_pthread { 
+    start_time := #Time::time;
+    eprintln$ "[" + name + "] "+"Process Monitoring pthread for " +pn+ " start at " + start_time.int.str;
+    result := spawnv(pn, outargs, setup);
+    match result with
+    // Child, exec failed
+    | BadExec e =>
+      eprintln$ "[" + name + "] "+"[Child] Error executing program " + pn + ": " +strerror e;
+      System::exit e.int; // exit child
+
+    // Child
+    | BadSetup ret =>
+      eprintln$ "[" + name + "] "+"[Child] Setup Failed Code " + ret.str;
+      System::exit ret; // exit child
+
+    // Parent, fork failed
+    | BadFork e =>
+      eprintln$ "[" + name + "] "+"Fork failed for program " + pn + ": " +strerror e;
+      goto finish;
+
+    // Parent, child running
+    | ProcessId pid =>
+      eprintln$ "[" + name + "] "+"Process " + (str pid) + " created for program " + pn;
+
+    check_pid:>
+      var status = checkpid(pid);
+      match status with
+      | #Running => 
+        if Time::time() - start_time > timelimit do
+           C_hack::ignore$ Process::kill(pid, PosixSignal::SIGKILL);
+           eprintln$  "[" + name + "] "+"KILL: Process "+pid.int.str +" for " + pn + " exceeded time limit " + str timelimit;
+        elif #PosixSignal::get_ctrl_c_flag do
+           C_hack::ignore$ Process::kill(pid, PosixSignal::SIGKILL);
+           eprintln$  "[" + name + "] "+"KILL: Process "+pid.int.str +" for " + pn + " due to Ctrl-C";
+        else
+          //eprintln$ "[" + name + "] "+"Running "+ pid.int.str;
+        done
+        Faio::sleep(sys_clock, 2.0);
+             
+        goto check_pid;
+
+      | Stopped status =>
+        eprintln$ "[" + name + "] "+ status.str;
+      endmatch;
+    endmatch;
+finish:>
+    eprintln$ "[" + name + "] "+"Monitoring pthread for "+pn+" done finish at " + #Time::time.int.str;
+    q.enqueue(name);
+    eprintln$ "[" + name + "] "+"Signalled DEAD for "+pn;
+  };
+}
+
+
+noinline proc launch_managed_processes (var inp: string * list[string * list[string]], var timelimit: double) {
+  def var desc, var tinp = inp;
+  eprintln desc;
+  var q = ts_bound_queue_t[string] 100;
+  var process_count = 0;
+  for k in tinp do
+    def var name, var args = k;
+    //eprintln$ name, args;
+    launch_managed_process(q, name, args, timelimit);
+    ++process_count;
+  done
+  while process_count > 0 do 
+    var death_name = q.dequeue;
+    eprintln$ "["death_name+ "] Process Funeral";
+    --process_count;
+  done
+  eprintln$ "Finished with group " + desc;
+  eprintln$ "-" * 20;
+}
+
+//launch_managed_process ("p1proc", list("./p1"),10.0);
+
+PosixSignal::trap_ctrl_c;
+
+// Create a thread to capture all stderr output, from
+// both this application and its threads, and also
+// any such output from the launched processes
+// The thread will grab all that stuff and republish
+// it with timestamps
+
+proc emux() {
+  // make a new file descriptor that goes to where stderr used to go
+  var old_stderr = FileSystem::dup(FileSystem::fd2);
+
+  // make a pipe
+  var inp, out = FileSystem::pipe(); 
+
+  // reassign the write end of the pipe to stderr
+  C_hack::ignore$ FileSystem::dup2(out,FileSystem::fd2); 
+
+  // close the fd of the write end, now it is re-assigned
+  C_hack::ignore$ FileSystem::close(out); 
+
+  // create a C stream associated with the read end of the pipe
+  var input_file = FileSystem::fdopen_input inp;
+
+  // create a C stream associated with the old error channel
+  var output_file = FileSystem::fdopen_output old_stderr;
+
+  spawn_pthread {
+     while not feof input_file do
+       var msg = readln input_file;
+       if msg == "" goto finish;
+       write$ output_file, "STDERR capture: " + msg; 
+     done
+  finish:>
+
+  // close the old error channel so any process that called us
+  // can get an eof on their stderr
+  fclose output_file;
+
+  // close the C stream and underlying fd of the read end of the pipe
+  fclose input_file;
+  };
+
+}
+
+var sys_clock = #Faio::mk_alarm_clock;
+
+emux();
+
+run:for group in (group1, group2, group3, group4, group5, group6,
+  group7, group8, group9)
+do
+  launch_managed_processes (group, 20.0);
+  if #PosixSignal::get_ctrl_c_flag do break run; done
+done
+
+eprintln "Mainline waiting for pthreads";
+
+// we can't close err, because it isn't an fostream
+// so close stderr instead: that's actually the write
+// end of the pipe
+fclose stderr;
+
+// close the underlying pipe fd as well for good measure.
+C_hack::ignore$ FileSystem::close FileSystem::fd2;
+
+// emergency suicide of our whole family
+//C_hack::ignore$ kill(OUR_PROCESS_GROUP,Posix_Signal::SIGKILL);
+

@@ -1,0 +1,3 @@
+// Platform independent compilation enforced by
+// failing to set any platform macros.
+macro val PLAT_INDEP = 1;

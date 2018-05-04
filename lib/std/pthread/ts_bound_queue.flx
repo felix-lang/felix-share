@@ -1,0 +1,71 @@
+#line 451 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+
+open class TS_Bound_Queue
+{
+  private uncopyable type bQ_ = "::flx::pthread::bound_queue_t";
+  _gc_pointer _gc_type bQ_ type ts_bound_queue_t[T] = "::flx::pthread::bound_queue_t*"
+    requires
+     package "flx_bound_queue",
+     scanner "::flx::pthread::bound_queue_scanner"
+  ;
+  ctor[T] ts_bound_queue_t[T]: !ints =
+    """
+      new (*PTF gcp, @0, false) ::flx::pthread::bound_queue_t(
+      PTF gcp->collector->get_thread_control(), (size_t)$1)
+    """ requires property "needs_ptf";
+
+  // NOTE: enqueue/dequeue on queues uses suspend/resume
+  // to tell any pending collector it is safe to proceed
+  // whilst it is doing the operations (which may block),
+  // to block returning from the I/O during a collection
+  // AND, if the I/O completed before the collection got
+  // going, to yield at this point.
+
+
+  private proc _enqueue[T]: ts_bound_queue_t[T] * &T = """
+    FLX_SAVE_REGS;
+//fprintf(stderr,"enqueue to ts_bound_queue q=%p starts, item=%p\\n", $1, $2);
+    //PTF gcp->collector->get_thread_control()->suspend();
+    $1->enqueue((void*)$2);
+//fprintf(stderr,"enqueue to ts_bound_queue q=%p done, item=%p\\n", $1, $2);
+    //PTF gcp->collector->get_thread_control()->resume();
+  """;
+
+
+  // Duh .. what happens if $2 storage location is set by
+  // the dequeue in the middle of a collection?
+  // it might be NULL when scanned, but by the time the queue
+  // is scanned the value will be lost from the queue and
+  // in the variable instead!
+  // The RACE is on!
+  private proc _dequeue[T]: ts_bound_queue_t[T] * &&T = """
+    FLX_SAVE_REGS;
+//fprintf(stderr,"dequeue from ts_bound_queue %p starts\\n", $1);
+    //PTF gcp->collector->get_thread_control()->suspend();
+    *$2=(?1*)$1->dequeue();
+//fprintf(stderr,"dequeue from ts_bound_queue done q=%p item=%p\\n",$1,*$2);
+    //PTF gcp->collector->get_thread_control()->resume();
+  """;
+
+  proc enqueue[T] (Q:ts_bound_queue_t[T])  (elt:T) {
+     _enqueue(Q, new elt);
+  }
+
+  gen dequeue[T] (Q:ts_bound_queue_t[T]): T = {
+    var x:&T;
+    _dequeue (Q,&x);
+    return *x;
+  }
+
+
+  proc wait[T]: ts_bound_queue_t[T] = """
+    FLX_SAVE_REGS;
+    //PTF gcp->collector->get_thread_control()->suspend();
+    $1->wait_until_empty();
+    //PTF gcp->collector->get_thread_control()->resume();
+  """;
+
+  proc resize[T]: ts_bound_queue_t[T] * !ints = "$1->resize((size_t)$2);";
+
+}
+

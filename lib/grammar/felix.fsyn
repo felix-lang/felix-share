@@ -1,0 +1,32 @@
+#line 1814 "/Users/skaller/felix/src/packages/grammar.fdoc"
+syntax felix {
+  requires
+    list,
+    blocks,
+    lexer,
+    statements,
+    type_decls,
+    variables,
+    executable,
+    assignment,
+    control,
+    exceptions,
+    conditional,
+    loops,
+    pfor,
+    assertions,
+    namespaces,
+    requirements,
+    expressions,
+    brackets,
+    texsyms,
+    functions,
+    patterns,
+    cbind,
+    regexps,
+    macros,
+    plugins,
+    debug,
+    chips
+  ;
+}

@@ -1,0 +1,33 @@
+#line 563 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiDrawable
+{
+  interface drawable_t {
+     draw: surface_t -> 0;
+     get_z: 1 -> uint32;
+     get_tag: 1 -> string;
+  }
+
+  object drawable (tag:string) (z:uint32) (d: surface_t -> 0) implements drawable_t =
+  {
+    method fun get_z () => z;
+    method proc draw (surf:surface_t) => d surf;
+    method fun get_tag () => tag;
+  }
+
+  // given some routine like draw_line (s:&SDL_surface) (p:parameters)
+  // this wrapper constructs a drawable by adding a tag name, a Z coordinate
+  // and binding the parameters.
+  noinline fun mk_drawable[T] (tag:string) (z:uint32) (d: &SDL_Surface -> T -> 0) (var a:T) : drawable_t =>
+    drawable tag z (proc (s:surface_t) { d (s.get_sdl_surface()) a; })
+  ;
+
+  noinline fun mk_drawable[T] (d: &SDL_Surface -> T -> 0) (var a:T) : drawable_t =>
+    drawable "notag" 100u32 (proc (s:surface_t) { d (s.get_sdl_surface()) a; })
+  ;
+
+  noinline fun mk_drawable[T] (tag:string) (d: &SDL_Surface -> T -> 0) (var a:T) : drawable_t =>
+    drawable tag 100u32 (proc (s:surface_t) { d (s.get_sdl_surface()) a; })
+  ;
+
+}
+

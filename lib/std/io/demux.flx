@@ -1,0 +1,11 @@
+#line 1184 "/Users/skaller/felix/src/packages/io.fdoc"
+
+class Demux
+{
+  type demuxer = "::flx::demux::flx_demuxer_t*"
+    requires package "demux"
+  ;
+  gen mk_sys_demux: 1->demuxer = "::flx::demux::make_std_demuxer()";
+  var sys_demux =  mk_sys_demux();
+}
+

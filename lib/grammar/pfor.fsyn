@@ -1,0 +1,30 @@
+#line 715 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+syntax pfor
+{
+   requires loops, blocks;
+
+   //$ Parallel For loop
+   loop_stmt := "pfor" sname "in" sexpr "upto" sexpr block =>#
+    """
+    (let*
+      (
+        (ctlvar _2)
+        (first _4)
+        (last _6)
+        (body _7)
+        (int (nos "int"))
+        (param `(PVar ,ctlvar ,int none)) ;; kind name type defaultvalue
+        (params `((,param) none))               ;; parameter list with constraint
+        (sfunargs `(,params))                   ;; HOF list of parameter lists
+        (proc `(ast_lambda ,_sr (,dfltvs ,sfunargs (ast_void ,_sr) (,body))))
+        (call `(ast_call ,_sr ,(nos "tpfor")  (ast_tuple ,_sr (,first ,last ,proc))))
+      )
+      ;;(begin (display body) (display "\n*****\n")
+      call
+      ;;)
+    )
+    """;
+
+
+}
+

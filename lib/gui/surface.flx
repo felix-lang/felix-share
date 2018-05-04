@@ -1,0 +1,112 @@
+#line 443 "/Users/skaller/felix/src/packages/gui.fdoc"
+class FlxGuiSurface
+{
+  proc clear(surf:&SDL_Surface) (c: colour_t)
+  {
+    var pixelformat : &SDL_PixelFormat  = surf*.format;
+    var bgpixels = SDL_MapRGB(pixelformat,c.r,c.g,c.b);
+    SDL_ClearClipRect (surf);
+    C_hack::ignore$ SDL_FillSurface (surf, bgpixels);
+  }
+
+  proc fill (surf:&SDL_Surface) (var r:rect_t, c:colour_t)
+  {
+    SDL_ClearClipRect (surf);
+    var pixelformat : &SDL_PixelFormat  = surf*.format;
+    var bgpixels = SDL_MapRGB(pixelformat,c.r,c.g,c.b);
+    C_hack::ignore$ SDL_FillRect (surf, &r, bgpixels);
+    SDL_ClearClipRect (surf);
+  }
+
+  noinline proc draw_line (surf:&SDL_Surface)  (c:color_t, x0:int, y0:int, x1:int, y1:int)
+  {
+     var r: SDL_Renderer = SDL_CreateSoftwareRenderer surf;
+     C_hack::ignore$ SDL_SetRenderDrawColor (r, c.r, c.g, c.b, c.a);
+     C_hack::ignore$ SDL_RenderDrawLine (r, x0, y0, x1, y1);
+     SDL_DestroyRenderer r;
+  }
+
+  proc write(surf:&SDL_Surface) (x:int, y:int, font:font_t, c: colour_t, s:string)
+  {
+    var rendered = TTF_RenderText_Solid (font,s,c);
+    var rect : SDL_Rect;
+
+    var minx:int; var maxx:int; var miny:int; var maxy:int; var advance:int;
+    C_hack::ignore$ TTF_GlyphMetrics(font,"m".char.ord.uint16,&minx, &maxx, &miny, &maxy, &advance);
+
+    rect&.x <- x + (min (minx,0));
+    rect&.y <- y - maxy;
+    var nullRect = C_hack::null[SDL_Rect];
+
+    var result = SDL_BlitSurface (rendered, nullRect, surf, &rect);
+    if result != 0 do
+      eprintln$ "Unable to blit text to surface";
+      System::exit 1;
+    done
+    SDL_FreeSurface rendered;
+  }
+
+  proc blit (surf:&SDL_Surface) (dstx:int, dsty:int, src: &SDL_Surface)
+  {
+    var nullRect = C_hack::null[SDL_Rect];
+    var dstRect = rect_t (dstx, dsty,0,0);
+    var result = SDL_BlitSurface (src, nullRect, surf, &dstRect);
+    if result != 0 do
+      eprintln$ "Unable to blit surface to surface at (" + dstx.str + "," + dsty.str + ")";
+      //System::exit 1;
+    done
+
+  }
+
+  interface surface_t {
+    get_sdl_surface: 1 -> &SDL_Surface;
+    get_width : 1 -> int;
+    get_height: 1 -> int;
+    clear: colour_t -> 0;
+    fill: rect_t * colour_t -> 0;
+    draw_line: colour_t * int * int * int * int -> 0; // x0,y0,x1,y1
+    write: int * int * font_t * colour_t * string -> 0;
+  }
+
+  // Wrapper around SDL surface
+  // borrows the SDL_Surface!! Does not own or delete
+  object surface (surf: &SDL_Surface) implements surface_t =
+  {
+    method fun get_sdl_surface () => surf;
+    method fun get_width () => surf*.w;
+    method fun get_height() => surf*.h;
+    method proc clear (c:colour_t) => FlxGuiSurface::clear surf c;
+    method proc fill (r:rect_t, c:colour_t) => FlxGuiSurface::fill surf (r,c);
+    method proc draw_line (c:colour_t, x0:int, y0:int, x1:int, y1:int) { FlxGuiSurface::draw_line surf (c,x0,y0,x1,y1); }
+    method proc write (x:int, y:int, font:font_t, c: colour_t, s:string) { FlxGuiSurface::write surf (x,y,font,c,s); }
+  }
+
+  // Takes possession of the surface
+  // Frees surface when object is freed by GC
+
+  header surface_deleter = """
+    struct _SDL_SurfaceDeleter {
+       _SDL_Surface *p;
+       _SDL_SurfaceDeleter () : p (nullptr) {}
+       ~_SDL_SurfaceDeleter () { SDL_FreeSurface (p); }
+    };
+  """;
+  type surface_holder_t = "surface_deleter" requires surface_deleter;
+  proc set : &surface_holder_t * &SDL_Surface = "$1->p=$2;";
+
+  object owned_surface (surf: &SDL_Surface) implements surface_t =
+  {
+    var holder: surface_holder_t;
+    set (&holder, surf);
+
+    // returns a LOAN of the surface only
+    method fun get_sdl_surface () => surf;
+    method fun get_width () => surf*.w;
+    method fun get_height() => surf*.h;
+    method proc clear (c:colour_t) => FlxGuiSurface::clear surf c;
+    method proc fill (r:rect_t, c:colour_t) => FlxGuiSurface::fill surf (r,c);
+    method proc draw_line (c:colour_t, x0:int, y0:int, x1:int, y1:int) { FlxGuiSurface::draw_line surf (c,x0,y0,x1,y1); }
+    method proc write (x:int, y:int, font:font_t, c: colour_t, s:string) { FlxGuiSurface::write surf (x,y,font,c,s); }
+  }
+
+}

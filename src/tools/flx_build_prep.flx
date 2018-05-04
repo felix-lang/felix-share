@@ -1,0 +1,330 @@
+#line 665 "/Users/skaller/felix/src/packages/buildtools.fdoc"
+include "std/felix/flx_cp";
+
+class FlxPrepBuild
+{
+
+  fun / (x:string,y:string) => Filename::join(x,y);
+
+  proc dirsetup(cmd:cmd_type)
+  {
+    // NOTE: unlink doesn't work on directories anyhow ...
+    // We need rmdir(), but that doesn't work unless dir is empty!
+    //FileSystem::unlink("trial-tmp");
+
+    if cmd.clean_target_dir do
+       println$ "Deleting target-dir=" + cmd.target_dir;
+       FileSystem::unlink(cmd.target_dir);
+    elif cmd.clean_target_bin_dir do
+       println$ "Deleting target-bin=" + cmd.target_dir/cmd.target_bin;
+       FileSystem::unlink(cmd.target_dir/cmd.target_bin);
+    elif cmd.clean_target_bin_binaries do
+      println$ "Cleaning binaries out of target not implemented";
+    done
+
+    C_hack::ignore$ Directory::mkdir(cmd.target_dir);
+    C_hack::ignore$ Directory::mkdir(cmd.target_dir/cmd.target_bin);
+    C_hack::ignore$ Directory::mkdir(cmd.target_dir/cmd.target_bin/'bin');
+
+    // Set up the share subdirectory.
+    if cmd.copy_repo do
+      if cmd.repo != cmd.target_dir/'share' do
+        println$ "Copy repository "+cmd.repo/'src -> ' + cmd.target_dir/'share'/'src';
+        CopyFiles::copyfiles(cmd.repo/'src',
+         '(.*\.(h|hpp|ml|mli|c|cpp|cxx|cc|flx|flxh|fdoc|fsyn|js|html|css|svg|png|gif|jpg|files|include|ttf))',
+         cmd.target_dir/'share'/'src'/'${1}',true,cmd.debug);
+      else
+        println$ "Cannot copy repo because source = target";
+      done
+    done
+
+    if cmd.copy_library do
+      println$ "Copy Felix library";
+      CopyFiles::copyfiles (cmd.target_dir/'share'/'src'/'lib', r"(.*\.(flx|flxh|fsyn|fdoc|files))",
+        cmd.target_dir/'share'/'lib/${1}',true,cmd.debug);
+    done
+
+    // This is SPECIAL because "version.flx" is the only file which is both
+    // shared-readonly and generated. So it has to be copied out of an
+    // existing built library not the repository dir.
+    // TODO: generate it using, say, flx or flxg.
+    if cmd.copy_version do
+      if cmd.source_dir != cmd.target_dir do
+        CopyFiles::copyfiles (cmd.source_dir/'share'/'lib'/'std', '(version.flx)',
+          cmd.target_dir/'share'/'lib'/'std/${1}',true,cmd.debug);
+      else
+        println$ "Cannot copy version because source = target";
+      done
+    done
+
+    if cmd.copy_pkg_db do
+      if cmd.source_dir/cmd.source_bin != cmd.target_dir/cmd.target_bin do
+        println$ "Copy config db";
+        CopyFiles::copyfiles(cmd.source_dir/cmd.source_bin/'config', '(.*)',
+          cmd.target_dir/cmd.target_bin/'config'/'${1}',true,cmd.debug);
+      else
+        println$ "Cannot copy config db because source = target";
+      done
+    done
+
+    if cmd.copy_config_headers do
+      if cmd.source_dir/cmd.source_bin != cmd.target_dir/cmd.target_bin do
+        println$ "Copy rtl config headers";
+        CopyFiles::copyfiles(cmd.source_dir/cmd.source_bin/'lib', r"(.*\.(h|hpp|flx|flxh))",
+          cmd.target_dir/cmd.target_bin/'lib'/'${1}',true,cmd.debug);
+      else
+        println$ "Cannot copy rtl config headers because source = target";
+      done
+    done
+
+    if cmd.setup_pkg != "" do
+      var setupdata = load cmd.setup_pkg;
+      var commands = split(setupdata,"\n");
+      var lineno = 0;
+      for command in commands do
+        //println$ "Command=" + command;
+        ++lineno;
+        var hsrc, hdst = "","";
+        match split (command, ">") with
+        | #Empty => ;
+        | Cons (h,#Empty) => hsrc = strip h;
+        | Cons (h,Cons (d,#Empty)) => hsrc = strip h; hdst = strip d;
+        | _ =>
+           println$ "[flx_build_prep:setup-pkg] file too many > characters file: "+
+           cmd.setup_pkg +"["+lineno.str+"] " + command;
+        endmatch;
+
+        if hsrc != "" do
+          if hdst == "" do hdst = "${0}"; done
+          println$ "Copying files " + hsrc + " > " + hdst;
+          //println$ "From source directory " + cmd.source_dir;
+          //println$ "To target directory " + cmd.target_dir/cmd.target_bin;
+          CopyFiles::copyfiles (cmd.source_dir, hsrc,cmd.target_dir/cmd.target_bin/hdst,true, true);
+        done
+      done
+    done
+  }
+
+  proc flx_build(cmd: cmd_type)
+  {
+    dirsetup(cmd);
+    // copy the compiler
+    var compiler_name = "flxg";
+    if PLAT_WIN32 do
+       compiler_name += ".exe";
+    done
+    if cmd.copy_compiler call CopyFiles::copyfiles(cmd.source_dir/cmd.source_bin/'bin', compiler_name,
+      cmd.target_dir/cmd.target_bin/'bin'/'flxg', true, cmd.debug);
+
+    println$ "Build Complete";
+  }
+
+  proc print_help()
+  {
+    println$ "Usage: flx_build_prep ";
+    println$ "";
+    println$ "# locations";
+    println$ "";
+    println$ "  --repo=repo                 default: src";
+    println$ "  --target-dir=target_dir     default: build/trial";
+    println$ "  --target-bin=target_bin     default: host";
+    println$ "  --source-dir=source_dir     default: build/release";
+    println$ "  --source-bin=source_bin     default: host";
+    println$ "";
+    println$ "# cleaning options";
+    println$ "";
+    println$ "  --clean-target-dir          delete entire target directory";
+    println$ "  --clean-target-bin-dir      delete target sub-directory";
+    println$ "  --clean-target-bin-binaries delete binaries from target sub-directory (not implemented yet)";
+    println$ "";
+    println$ "# copy options";
+    println$ "";
+    println$ "  --copy-repo                 copy src dir of repository";
+    println$ "  --copy-compiler             copy compiler flxg";
+    println$ "  --copy-pkg-db               copy package database";
+    println$ "  --copy-config-headers       copy C++ config headers (NO LONGER OF ANY USE!)";
+    println$ "  --copy-version              copy Felix version file";
+    println$ "  --copy-library              copy Felix library";
+    println$ "";
+    println$ "# selective setup of pkg-db";
+    println$ "  --setup=pkg                 setup using file";
+    println$ "  --toolchain=toolchain       specify toolchain to use";
+    println$ "  --debug                     do stuff verbosely";
+    println$ "";
+    println$ "# Environment variables";
+    println$ "";
+    println$ "FLX_SHELL_ECHO=1              echo all shell callouts (system, popen)";
+    println$ "FLX_DEBUG_FLX=1               make 'flx' explain its processing decisions";
+    println$ "BUILD_FLX_TOOLCHAIN_FAMILY=family   family=gcc or family=clang";
+    println$ "";
+    println$ "Purpose: setup new Felix target";
+    println$ "";
+    println$ "Requires repository directory $repo contain subdirectory 'src'";
+    println$ "Requires directory $source_dir contain subdirectory $source_bin which contains program 'flxg'";
+    println$ "Ensures target_dir contains:";
+    println$ "";
+    println$ "  (a) Repository source in $target_dir/share/src";
+    println$ "  (b) config db, C++ headers, libraries in $target_dir/$target_bin/*";
+    println$ "";
+    println$ "Copies version, flxg, config db, and C++ headers from $source_dir if required";
+  }
+
+  proc setup_toolchain(var toolchain:string, pkgdir:string)
+  {
+    // if the toolchain is specified, fix it
+    if toolchain != "" do
+      begin
+        println$ "Write toolchain " + toolchain + " into package " + pkgdir/'toolchain.fpc';
+        Directory::mkdirs pkgdir;
+        var f = fopen_output (pkgdir/'toolchain.fpc');
+        write (f,"toolchain: " + toolchain +"\n");
+        fclose f;
+      end
+      println$ "WRITING SPECIFIED TOOLCHAIN PACKAGE: ****************************";
+    elif FileStat::fileexists (pkgdir/'toolchain.fpc') do
+      println$ "USING EXISTING TOOLCHAIN PACKAGE: ****************************";
+    else // guess toolchain and write it
+      var res, os = Shell::get_stdout("uname");
+      &os <- os.strip;
+      var compiler_family = Env::getenv "BUILD_FLX_TOOLCHAIN_FAMILY";
+      match os,compiler_family do
+      | "","" => &toolchain <- "toolchain_mscv_win32";
+      | "Linux","" => &toolchain <- "toolchain_gcc_linux";
+      | "Darwin","" => &toolchain <- "toolchain_clang_osx";
+
+      | "Linux","gcc" => &toolchain <- "toolchain_gcc_linux";
+      | "Linux","clang" => &toolchain <- "toolchain_clang_linux";
+      | "Darwin","gcc" => &toolchain <- "toolchain_gcc_osx";
+      | "Darwin","clang" => &toolchain <- "toolchain_clang_osx";
+
+      | _,_ =>
+        println$ "No toolchain specified in toolchain.fpc or with --toolchain switch";
+        println$ "  uname returns unknown OS: '" +os+'"';
+        println$ "Either:";
+        println$ "  (1) Set environment variable BUID_FLX_TOOLCHAIN_FAMILY=family where family=gcc or family=clang";
+        println$ "  (2) Set the toolchain.fpc file to read 'toolchain:toolchain_name";
+        println$ "  (3) use --toolchain=toolchain_name command line option";
+        println$ "  Note:toolchain name is form 'toolchain_<family>_<os>'";
+        println$ "    where os=Darwin or os=Linux or os=Win32";
+        System::exit(1);
+      done
+      begin
+        println$ "Write toolchain " + toolchain + " into package " + pkgdir/'toolchain.fpc';
+        var f = fopen_output (pkgdir/'toolchain.fpc');
+        write (f,"toolchain: " + toolchain +"\n");
+        fclose f;
+      end
+      println$ "USING GUESSED TOOLCHAIN PACKAGE: ****************************";
+    done
+    println$ load (pkgdir/'toolchain.fpc');
+  }
+
+  typedef cmd_type = typeof (parse_args Empty[string]);
+
+  noinline fun parse_args (args: list[string]) =
+  {
+     var cmd = (
+       repo = '.',
+       target_dir="build"/"trial",
+       target_bin="host",
+       source_dir="build"/"release",
+       source_bin="host",
+       toolchain="",
+
+       clean_target_dir=false,
+       clean_target_bin_dir=false,
+       clean_target_bin_binaries=false,
+
+       copy_repo=false,
+       copy_compiler=false,
+       copy_pkg_db=false,
+       copy_config_headers=false,
+       copy_version=false,
+       copy_library=false,
+       setup_pkg="",
+       debug = false
+     );
+
+     for arg in args do
+       // location options
+       if prefix(arg,"--repo=") do
+         &cmd.repo <- arg.[7 to];
+       elif prefix(arg,"--target-dir=") do
+         &cmd.target_dir <- arg.[13 to];
+       elif prefix(arg,"--target-bin=") do
+         &cmd.target_bin <- arg.[13 to];
+       elif prefix(arg,"--source-dir=") do
+         &cmd.source_dir <- arg.[13 to];
+       elif prefix(arg,"--source-bin=") do
+         &cmd.source_bin <- arg.[13 to];
+       elif prefix(arg,"--toolchain=") do
+         &cmd.toolchain <- arg.[12 to];
+       elif arg == "--debug" do
+         &cmd.debug <- true;
+
+       // operation options: cleaning
+       elif arg == "--clean-target-dir" do
+         &cmd.clean_target_dir <- true;
+       elif arg == "--clean-target-bin-dir" do
+         &cmd.clean_target_bin_dir <- true;
+       elif arg == "--clean-target-bin-binaries" do
+         &cmd.clean_target_bin_binaries <- true;
+
+       // operation options: copying
+       elif arg == "--copy-repo" do
+         &cmd.copy_repo<- true;
+       elif arg == "--copy-compiler" do
+         &cmd.copy_compiler<- true;
+       elif arg == "--copy-pkg-db" do
+         &cmd.copy_pkg_db <- true;
+       elif arg == "--copy-config-headers" do
+         &cmd.copy_config_headers <- true;
+       elif arg == "--copy-version" do
+         &cmd.copy_version <- true;
+       elif arg == "--copy-library" do
+         &cmd.copy_library <- true;
+
+       // special configuration package
+       elif prefix(arg,"--setup=") do
+         &cmd.setup_pkg <- arg.[8 to];
+
+       // help
+       elif arg == "--help" do
+         print_help();
+         System::exit(0);
+       else
+         println$ "Unknown switch " + arg;
+         print_help();
+         System::exit(1);
+       done
+     done
+
+
+     return cmd;
+  }
+
+  noinline proc build_felix (xargs:list[string])
+  {
+    if xargs.len.int < 2 do
+      print_help();
+      System::exit(1);
+    done
+    var cmd = parse_args (tail xargs);
+    println$ "flx_build_prep v1.6";
+    println$ "  repository       = " + cmd.repo;
+    println$ "  target-dir       = " + cmd.target_dir;
+    println$ "  target-bin       = " + cmd.target_bin;
+    println$ "  source-dir       = " + cmd.source_dir;
+    println$ "  source-bin       = " + cmd.source_bin;
+    println$ "  setup-pkg        = " + cmd.setup_pkg;
+    println$ "  toolchain (spec) = " + cmd.toolchain;
+    flx_build (cmd);
+    var target_config_dir = cmd.target_dir/cmd.target_bin/"config" ;
+    setup_toolchain(cmd.toolchain,target_config_dir );
+  }
+
+}
+
+FlxPrepBuild::build_felix (#System::args);
+
+System::exit (0);

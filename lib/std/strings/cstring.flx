@@ -1,0 +1,28 @@
+#line 10 "/Users/skaller/felix/src/packages/ucstring.fdoc"
+// Primitives
+class CString
+{
+  //$ C strcpy.
+  proc strcpy: +char * +char = "(void)::std::strcpy($1,$2);"
+    requires Cxx_headers::cstring
+  ;
+
+  //$ C strncpy.
+  proc strncpy: +char * +char * !ints = "(void)::std::strncpy($1,$2,$3);"
+    requires Cxx_headers::cstring
+  ;
+
+  //$ C strlen: NTBS length.
+  fun strlen: +char -> size = "::std::strlen($1)"
+    requires Cxx_headers::cstring
+  ;
+
+  fun len (s:+char) => strlen s;
+
+  //$ Traditional NTBS strdup.
+  gen strdup: +char -> +char = "::flx::rtl::strutil::flx_strdup($1)"
+    requires package "flx_strutil"
+  ;
+
+}
+

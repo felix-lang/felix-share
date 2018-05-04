@@ -1,0 +1,270 @@
+#line 1933 "/Users/skaller/felix/src/packages/toolchain.fdoc"
+include "std/felix/toolchain_interface";
+include "std/felix/toolchain_clang_config";
+include "std/felix/flx_cxx";
+
+object toolchain_clang_apple_iOS_maker (sdk_tag:string, archs:list[string])
+  (config:clang_config_t) implements toolchain_t =
+{
+  //eprintln$ "toolchain_clang_apple_iOS_maker sdk=" + sdk_tag + ", arches=" + archs.str;
+  gen get (s:string):string = {
+    var err, res = System::get_stdout s;
+    if err != 0 do
+      var msg = "Abort: Error executing shell command " + s;
+      eprintln$ msg;
+      System::abort;
+    done
+    return res;
+  }
+
+  var clang = strip(get("xcrun --sdk " + sdk_tag + " --find clang"));
+  var clangxx = strip(get("xcrun --sdk " + sdk_tag + " --find clang++"));
+  var sdk = strip(get("xcrun --sdk " + sdk_tag + " --show-sdk-path"));
+
+  //eprintln$ "C compiler " + clang;
+  //eprintln$ "C++ compiler " + clangxx;
+  //eprintln$ "sdk path " + sdk;
+
+  var cxx_compile_warning_flags = list$
+    "-w", // turn off all the warnings (but not hard errors)
+    "-Wfatal-errors", // stop compiling on the first hard error
+    "-Wno-return-type-c-linkage",
+    "-Wno-invalid-offsetof"
+  ;
+  var c_compile_warning_flags = list$ "-w",
+    "-Wfatal-errors",
+    "-Wno-array-bounds"
+  ;
+
+  var c_compiler = clang;
+  var cxx_compiler = clangxx;
+  var linker = clangxx;
+  var archlist = rev (fold_left (fun (acc:list[string]) (arch:string) => arch ! "-arch" ! acc) Empty[string] archs);
+
+  var ccflags_for_dynamic_link = list[string]("-dynamiclib", "-isysroot", sdk) + archlist;
+  var base_c_compile_flags =
+    "-g"! "-c" ! "-isysroot" ! sdk ! "-O1" !
+    "-fno-common"! "-fno-strict-aliasing" ! "-fembed-bitcode" !
+    (archlist + c_compile_warning_flags+config.ccflags)
+  ;
+  var base_cxx_compile_flags =
+    "-g"! "-c" ! "-isysroot" ! sdk ! "-O1" !
+    "-fno-common"! "-fno-strict-aliasing" ! "-fembed-bitcode" ! "-std=c++11" !
+    (archlist + cxx_compile_warning_flags+config.ccflags)
+  ;
+
+  method fun whatami () => "toolchain_clang_apple_iOS sdk="+sdk_tag+", archs="+cat "," archs;
+  method fun host_os () => "OSX";
+  method fun target_os () => "iOS";
+  method fun cxx_compiler_vendor () => "clang";
+
+  method fun dependency_extension () => ".d";
+  method fun executable_extension () => "";
+  method fun static_object_extension () => "_static.o";
+  method fun dynamic_object_extension () => "_dynamic.o";
+  method fun static_library_extension () => ".a";
+  method fun dynamic_library_extension () => ".dylib";
+  method fun pathname_separator () => "/";
+  method fun debug_flags () => list[string] "-g";
+  method fun get_base_c_compile_flags () => base_c_compile_flags;
+  method fun get_base_cxx_compile_flags () => base_cxx_compile_flags;
+
+// Boilerplate
+
+  method gen c_dependency_generator (spec:(src:string)) : int * string =
+  {
+     var result, data =
+       CxxCompiler::generic_cxx_gen_deps
+       (
+          CCDEP=c_compiler,
+          CCFLAGS = "-isysroot" ! sdk ! "-MM" ! config.ccflags,
+          INCLUDE_DIRS=config.header_search_dirs,
+          MACROS=config.macros,
+          debugln = config.debugln
+       )
+       (spec.src)
+     ;
+     return result,  data;
+  }
+
+  method gen cxx_dependency_generator (spec:(src:string)) : int * string =
+  {
+     var result, data =
+       CxxCompiler::generic_cxx_gen_deps
+       (
+          CCDEP=cxx_compiler,
+          CCFLAGS = "-std=c++11" ! "-isysroot" ! sdk ! "-MM" ! config.ccflags,
+          INCLUDE_DIRS=config.header_search_dirs,
+          MACROS=config.macros,
+          debugln = config.debugln
+       )
+       (spec.src)
+     ;
+     return result, data;
+  }
+
+  method gen dependency_parser (data:string) : list[string] =>
+     CxxCompiler::generic_dependency_parser data
+  ;
+
+  method gen c_static_object_compiler (spec:(dst:string, src:string)) : int =
+  {
+    var result =
+      CxxCompiler::generic_cxx_compile_for_static
+      (
+        CCOBJ_STATIC_LIB = c_compiler,
+        CCFLAGS = base_c_compile_flags,
+        INCLUDE_DIRS = config.header_search_dirs,
+        MACROS = config.macros,
+        SPEC_OBJ_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.src, spec.dst)
+    ;
+    return result;
+  }
+
+  method gen c_dynamic_object_compiler (spec:(dst:string, src:string)) : int =
+  {
+    var result =
+      CxxCompiler::generic_cxx_compile_for_dynamic
+      (
+        CCOBJ_DLLIB = c_compiler,
+        CCFLAGS = "-fPIC" ! "-fvisibility=hidden" ! base_c_compile_flags,
+        INCLUDE_DIRS = config.header_search_dirs,
+        MACROS = config.macros,
+        SPEC_OBJ_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.src, spec.dst)
+    ;
+    return result;
+  }
+
+
+  method gen cxx_static_object_compiler (spec:(dst:string, src:string)) : int =
+  {
+    var result =
+      CxxCompiler::generic_cxx_compile_for_static
+      (
+        CCOBJ_STATIC_LIB = cxx_compiler,
+        CCFLAGS = base_cxx_compile_flags,
+        INCLUDE_DIRS = config.header_search_dirs,
+        MACROS = config.macros,
+        SPEC_OBJ_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.src, spec.dst)
+    ;
+    return result;
+  }
+
+  method gen cxx_static_library_object_compiler (spec:(dst:string, src:string)) : int =
+  {
+    var result =
+      CxxCompiler::generic_cxx_compile_for_static
+      (
+        CCOBJ_STATIC_LIB = cxx_compiler,
+        CCFLAGS = base_cxx_compile_flags,
+        INCLUDE_DIRS = config.header_search_dirs,
+        MACROS = "FLX_STATIC_LINK"+config.macros,
+        SPEC_OBJ_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.src, spec.dst)
+    ;
+    return result;
+  }
+
+
+  method gen cxx_dynamic_object_compiler (spec:(dst:string, src:string)) : int =
+  {
+    var result =
+      CxxCompiler::generic_cxx_compile_for_dynamic
+      (
+        CCOBJ_DLLIB = linker,
+        CCFLAGS = "-fPIC" ! "-fvisibility=hidden" ! base_cxx_compile_flags,
+        INCLUDE_DIRS = config.header_search_dirs,
+        MACROS = config.macros,
+        SPEC_OBJ_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.src, spec.dst)
+    ;
+    return result;
+  }
+
+  method gen static_library_linker (spec:(dst:string, srcs:list[string])): int =
+  {
+    var result =
+      CxxCompiler::generic_static_library
+      (
+        CCLINK_STATIC_LIB = "libtool",
+        CCFLAGS = list[string]("-static"),
+        SPEC_LIB_FILENAME = "-o ",
+        debugln = config.debugln
+      )
+      (spec.srcs, spec.dst)
+    ;
+    return result;
+  }
+
+  method gen static_executable_linker  (spec:(dst:string, srcs:list[string])) : int =
+  {
+    var result =
+      CxxCompiler::generic_link_exe_static
+      (
+        CCLINK_STATIC = linker,
+        CCFLAGS = Empty[string],
+        SPEC_EXE_FILENAME = "-o ",
+        LINK_STRINGS = config.library_search_dirs + config.static_libraries,
+        debugln = config.debugln
+      )
+      (spec.srcs, spec.dst)
+    ;
+    return result;
+  }
+
+  method gen dynamic_executable_linker  (spec:(dst:string, srcs:list[string])) : int =
+  {
+    var result =
+      CxxCompiler::generic_link_exe_dynamic
+      (
+        CCLINK_STATIC = linker,
+        CCFLAGS = Empty[string],
+        SPEC_EXE_FILENAME = "-o ",
+        LINK_STRINGS = config.library_search_dirs + config.dynamic_libraries,
+        debugln = config.debugln
+      )
+      (spec.srcs, spec.dst)
+    ;
+    return result;
+  }
+
+
+  method gen dynamic_library_linker (spec:(dst:string,srcs:list[string])) : int =
+  {
+    var result =
+      CxxCompiler::generic_link_lib_dynamic
+      (
+        CCLINK_DLLIB = linker,
+        CCFLAGS = ccflags_for_dynamic_link,
+        EXT_SHARED_OBJ = #dynamic_library_extension,
+        SPEC_EXE_FILENAME = "-o ",
+        LINK_STRINGS = config.library_search_dirs + config.dynamic_libraries,
+        debugln = config.debugln
+      )
+      (spec.srcs, spec.dst)
+    ;
+    return result;
+  }
+}
+
+gen toolchain_clang_apple_iPhoneOS_armv7_arm64 (config:clang_config_t) : toolchain_t =>
+  toolchain_clang_apple_iOS_maker ("iphoneos",(["armv7","arm64"])) config
+;
+
+gen toolchain_clang_apple_iPhoneSimulator (config:clang_config_t) : toolchain_t = {
+  return toolchain_clang_apple_iOS_maker ("iphonesimulator",(["x86_64","i386"])) config;
+}
+

@@ -1,0 +1,4 @@
+#line 72 "/Users/skaller/felix/src/packages/flx.fdoc"
+include "std/felix/flx/flx";
+
+System::pexit$ Flx::runflx #System::args;

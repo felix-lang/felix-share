@@ -1,0 +1,5 @@
+#line 65 "/Users/skaller/felix/src/packages/debug.fdoc"
+syntax debug
+{
+   satom := "HERE" =># "`(ast_here ,_sr)";
+}

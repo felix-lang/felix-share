@@ -1,0 +1,168 @@
+@h2 The command line harness (bin/flx)
+When checking if a flx file needs recompilation, fails to account for include files. 
+Workaround: use --force switch. Fix: we could recursively scan files for inclusions,
+which would require parsing and path searching. A better technique would be to
+have the compiler generate a dependency file. An alternative under serious consideration
+is to get rid of include files altogether and use the package manager exclusively
+to locate resources. The main difficulty with this is that it would require
+the compiler (flxg) to invoke the package manager. It is also not appropriate if
+a client splits up a program into several files, note in this case the include 
+statement must use a name prefixed by ".".
+
+
+@h2 The Webserver (tools/webserver)
+Appears to fail to send tail of files properly, apparently due to a bug
+in Posix socket specification which allows a compliant OS to 
+junk the output buffers when an asynchronous socket is closed.
+Linux is known to do this. Workaround: I put a delay, which can be set
+by --delay=99.99 command line switch, for delay in seconds. Default is
+0.1 or 100ms. The delay does not block the server pthread but it does
+cost resources since the fibre and socket remain allocated after they
+should be gone. Also exposes the server to a DNS attack.
+
+Doesn't handle quotes embedded in strings correctly
+
+At present not all include files are found, including C++ headers
+because they don't have an extension, and file relative includes,
+because the names are indistinguishable from path relative includes,
+and the including filename is lost at the point the client issues a
+GET request. This can only be fixed by calculating all inclusions
+properly when the including file is served, since it is only at this
+time that we know the including file's path.
+
+@h2 The package manager (bin/flx_pkgconfig)
+No known issues.
+
+@h2 The Felix Library (Felix)
+@h3 Filename
+Filename split functions do not handle slosh quoted separators
+
+Filename module doesn't provide a way to strip double separators eg // on Unix
+
+No functions for splitting Windows drive letters or network drive names
+
+@h3 Posix
+@h2 The run time support libraries (C++)
+
+@h2 The compiler (bin/flxg)
+@h3 Closures of anon sums
+Can't handle closures of anonymous sums.
+
+@h3 Split nugram.flxh
+The grammar file (lib/nugram.flxh) cannot be split up into parts
+because it is too early during parsing to use the include statement.
+It is not that the grammar production for the include statement is
+not yet defined, although that is the case at the moment, it could
+easily be built in to the initial grammar; rather, the problem is that
+the parser is using Ocaml lexbufs directly: these are quite brain-dead
+and cannot be stacked so that inclusions would work properly. 
+In particular since the old parsing technology was replaced by Dypgen,
+there are no #includes which would be managed at a low level, nor the
+#line directives which would allow a preprocessor to do the job.
+The grammar works but the file is way too big to present in documentation
+as is.
+
+@h3 Error reporting
+A large number of client errors are not reported properly. In particular
+most type errors are not properly reported because source references
+are not propagated. In fact it seems we have lost all our source references
+in expressions, and we never had them for types: only executable statements
+preserve source references. Managing source references is extremely difficult
+and very laborious. Code transformation involving both reductions and
+synthesis bring into question every time what source reference to use.
+
+@h3 Inefficient binding
+The compiler needlessly binds symbols that are never used.
+This is done partly to ensure a whole file is properly type checked.
+Nevertheless the overhead of rebinding the whole library every time
+could be onerous. The optimiser does strip out unused entities.
+
+@h3 grammar for ctor 
+The grammar for constructor is indadequate, I need to do this:
+@felix
+ctor[T,N] varray[T]: array[T,N] => ..
+@
+but I can't. For functions and procedures and some other constructions,
+the syntax is a hack. The correct syntax is actually:
+@felix
+fun[T with X[T]] f(x:t)=> ...
+@
+which is used, for example, for <code>open</code> because it has to be.
+The way C++ does this is the best, with an explicit schema quantifier
+(namely the <code>template</code> prefix).
+
+@h3 Operator dot failure
+I expected this to work:
+@felix
+ fun sort[T] (lt:T*T->bool) (x:list[T])=
+ {
+   val n = len x;
+@
+but it gives:
+<pre>
+~/felix>flx --test=build/release-optimized/ tl
+Failure binding expression (x.len)
+SYSTEM FAILURE
+[lookup] operator . Expected LHS nominal type to be (c)struct or abstract primitive, got list[&lt;T4795&gt;]
+</pre>
+Not clear why the AST_dot code doesn't handle this properly, looks like,
+in fact, that code isn't being called. Check out also the Koenig lookup code.
+The lookup routines have some duplication of handling depending on the
+exact context in which something is found.
+
+I have to note another case that failed: 
+@felix
+(&x).address
+@
+I expected this to apply address to the argument, and then notice address is a type
+so then look for a constructor. Actually address is defined in global scope,
+whereas the constructor, which is just a cast, is defined in C_hack,
+however this would only account for a failure is Koenig lookup was being
+applied, which isn't clear. This case also points to the need to write 
+something like:
+@felix
+(&x).C_hack::address
+@
+in the general case, although in this case it isn't clear that would
+work since the actual type address is found in global scope, not C_hack.
+Anyhow, worth examining all the ways operator dot can work, make
+lots of test cases, and document what it actually does (or should do).
+
+
+
+@h1 Operator dot auto deref
+At present, even for a non struct, x.f is not equivalent to f x.
+This is because if x is a pointer, it is automagically dereferenced
+recursively until a non-pointer is obtained.
+
+This is correct behaviour for a field access: just syntactic sugar
+to save writing (*x).f or (*****x.f).
+
+But it isn't expected if f is a function requiring a pointer argument.
+
+The algorithm should (a) check if x is a pointer to a (pointer to a ..)
+struct type before doing the deref and/or try overload resolution first
+anyhow, just in case. This arose where:
+
+type RE2_ = "RE2";
+typedef RE2 = &amp;RE2_;
+fun f: RE2 -> int = "..";
+var r = RE2(..);
+println$ r.ngroups; // fails, r is a pointer, tried to find ngroups (*r)
+
+@h1 Increment varray element doesnt work
+You can't say this:
+@felix
+  var x = varray(5,1);
+  ++x.[1]; // error, can't address x.[1]
+@
+despite the fact the subscript operator is declared lvalue.
+This works though:
+@felix
+  x.[1] = x.[1] + 1;
+@
+which shows the restriction is unnecessary. Note that increment function {pre_incr}
+requires a pointer, the parser takes the address of the LHS to find it, on the
+assumption that it is a variable. A {varray}, however, it already a pointer..
+This needs to be sorted out.
+

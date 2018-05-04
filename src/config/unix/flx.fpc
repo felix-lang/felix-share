@@ -1,0 +1,11 @@
+Generated_from: 1680 "/Users/skaller/felix/src/packages/rtl.fdoc"
+Name: flx
+Description: Felix core runtime support
+provides_dlib: -lflx_dynamic
+provides_slib: -lflx_static
+Requires: flx_gc flx_exceptions flx_pthread flx_dynlink
+library: rtl
+includes:  '"flx_rtl.hpp"'  <iostream> <cstdio> <cstddef> <cassert> <climits> <string>
+macros: BUILD_RTL
+srcdir: src/rtl
+src: .*\.cpp

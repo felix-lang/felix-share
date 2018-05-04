@@ -1,0 +1,8 @@
+Generated_from: 140 "/Users/skaller/felix/src/packages/botan.fdoc"
+Generated_from: 141 "/Users/skaller/felix/src/packages/botan.fdoc"
+Name: botan
+Platform: Unix
+Description: Botan Crypto Library
+provides_dlib: -L/usr/local/lib -lbotan-2
+provides_slib: -L/usr/local/lib -lbotan-2
+cflags: -I/usr/local/include/botan-2.0

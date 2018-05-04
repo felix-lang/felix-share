@@ -1,0 +1,4 @@
+#line 279 "/Users/skaller/felix/src/packages/libstruct.fdoc"
+
+struct Osx{};
+include "std/posix/__init__";

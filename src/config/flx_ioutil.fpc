@@ -1,0 +1,5 @@
+Generated_from: 267 "/Users/skaller/felix/src/packages/io.fdoc"
+Name: flx_ioutil
+Description: I/O support
+includes: '"flx_ioutil.hpp"'
+Requires: flx

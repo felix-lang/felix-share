@@ -1,0 +1,7 @@
+#line 102 "/Users/skaller/felix/src/packages/regex.fdoc"
+include "std/regex/re2";
+include "std/regex/tre";
+include "std/regex/regdef";
+include "std/regex/lexer";
+
+

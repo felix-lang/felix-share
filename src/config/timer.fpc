@@ -1,0 +1,5 @@
+Generated_from: 658 "/Users/skaller/felix/src/packages/faio.fdoc"
+Name: Timer
+Description: Real time clock services
+Requires: faio
+includes:  '"faio_timer.hpp"'

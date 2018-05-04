@@ -1,0 +1,121 @@
+#line 109 "/Users/skaller/felix/src/packages/pointers.fdoc"
+
+
+// For some reason this functor must be in global scope
+//$ Define prefix + notation.
+typedef fun prefix_plus(T:TYPE) : TYPE => Carray::carray[T];
+
+//$ A carray[T] = +T is an incrementable, non-NULL, pointer.
+open class Carray
+{
+  requires Cxx_headers::cstdlib;
+  open C_hack;
+
+  //$ The carray type.
+  type carray[T] = new &T;
+
+#line 130 "/Users/skaller/felix/src/packages/pointers.fdoc"
+
+  //$ Allocate a C array on the C heap (malloc).
+  //$ Unsafe: Not tracked by GC.
+  fun array_alloc[T]: !ints -> carray[T] = '(?1*)::std::malloc(sizeof(?1)*$1)';
+
+  //$ Allocate a C array on the C heap with 0 fill (cmalloc).
+  //$ Unsafe: Not tracked by GC.
+  fun array_calloc[T]: !ints -> carray[T] = '(?1*)::std::calloc(sizeof(?1),$1)';
+
+  //$ Free a C array (free).
+  //$ Must point to C heap allocated storage. Unsafe.
+  proc free[T]: carray[T] = "::std::free($1);";
+
+#line 145 "/Users/skaller/felix/src/packages/pointers.fdoc"
+
+  //$ Functional get by index.
+  fun get[T]: carray[T] * !ints -> T = '$1[$2]';
+
+  //$ Store value in array at index position.
+  proc set[T] : carray[T] * !ints * T = "$1[$2]=$3;";
+
+  //$ Get by index using application.
+  //$ i x = x . i = get (x,i)
+  fun apply [T,I in ints] (i:I, x:carray[T]) => get (x,i);
+
+#line 161 "/Users/skaller/felix/src/packages/pointers.fdoc"
+  //$ Lvalue reference to element by index position. Unsafe.
+  //lvalue fun subscript[T]: carray[T] * !ints -> T = '$1[$2]';
+  fun subscript[T]: carray[T] * !ints -> T = '$1[$2]';
+
+  //$ Lvalue reference to element by pointer.
+  //lvalue fun deref[T]: carray[T] -> T = '*$1';
+  fun deref[T]: carray[T] -> T = '*$1';
+
+#line 171 "/Users/skaller/felix/src/packages/pointers.fdoc"
+  //$ Advance carray to next element.
+  fun + [T]: carray[T] * !ints -> carray[T]= '$1+$2';
+
+  //$ Backup carray to previous element.
+  fun - [T]: carray[T] * !ints -> carray[T] = '$1-$2';
+
+  //$ Calculate the offset in elements between
+  //$ two overlapping carrays.
+  fun - [T]: carray[T] * carray[T]-> ptrdiff = '$1-$2';
+
+#line 183 "/Users/skaller/felix/src/packages/pointers.fdoc"
+
+  //$ Mutable pre-increment ++p.
+  proc pre_incr[T]: &carray[T] = '++*$1;';
+
+  //$ Mutable post-increment p++.
+  proc post_incr[T]: &carray[T] = '(*$1)++;';
+
+  //$ Mutable pre-decarement --p.
+  proc pre_decr[T]: &carray[T] = '--*$1;';
+
+  //$ Mutable post-decarement p--.
+  proc post_decr[T]: &carray[T] = '(*$1)--;';
+
+  //$ Mutable advance by offset amount.
+  proc += [T]: &carray[T] * !ints = '*$1+=$2;';
+
+  //$ Mutable backup by offset amount.
+  proc -= [T]: &carray[T] * !ints = '*$1-=$2;';
+
+#line 204 "/Users/skaller/felix/src/packages/pointers.fdoc"
+
+  //$ Pointer equality.
+  instance[T] Eq[carray[T]] {
+    fun == : carray[T] * carray[T] -> bool = '$1==$2';
+    fun != : carray[T] * carray[T] -> bool = '$1!=$2';
+  }
+
+  //$ Pointer total ordering.
+  instance[T] Tord[carray[T]] {
+    fun < : carray[T] * carray[T] -> bool = '$1<$2';
+    fun <= : carray[T] * carray[T] -> bool = '$1<=$2';
+    fun > : carray[T] * carray[T] -> bool = '$1>$2';
+    fun >= : carray[T] * carray[T] -> bool = '$1>=$2';
+  }
+
+#line 221 "/Users/skaller/felix/src/packages/pointers.fdoc"
+  //$ Get carray of an array.
+  fun stl_begin[T,N]: carray[array[T,N]] -> carray[T] = "(?1*)&($1->data)";
+
+  //$ Unsafe conversion of Felix pointer to carray.
+  fun prefix_plus [T]:&T -> carray[T] = "$t"; // unsafe
+
+  //$ Demote carray to Felix pointer (safe unless off the end).
+  fun neg [T]: carray[T] -> &T = "$t"; // safe (unless we allow +T to be NULL later ..)
+
+  //$ Unsafe conversion of Felix pointer to carray.
+  ctor[T] carray[T] : &T = "$t";
+
+  //$ Get a carray from a Felix array object.
+  ctor[T,N] carray[T]: &array[T,N] = "($1)->data";
+
+
+  //$ Convert C array to Felix array.
+  fun array_of[T,N]: carray[T] -> &array[T,N] = "*(#0*)(void*)$1";
+}
+
+open[T] Eq[carray[T]];
+open[T] Tord[carray[T]];

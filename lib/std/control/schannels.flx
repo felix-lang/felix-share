@@ -1,0 +1,220 @@
+#line 200 "/Users/skaller/felix/src/packages/fibres.fdoc"
+
+//$ Sychronous Channels.
+//$ Used to exchange control and possibly data
+//$ between Felix f-threads (aka fibres).
+
+open class Schannel
+{
+  //$ The type of a bidirectional synchronous channel.
+  _gc_pointer type schannel[t] = "::flx::rtl::schannel_t*";
+
+  //$ The type of an input synchronous channel.
+  _gc_pointer type ischannel[t] = "::flx::rtl::schannel_t*";
+
+  //$ The type of an output synchronous channel.
+  _gc_pointer type oschannel[t] = "::flx::rtl::schannel_t*";
+
+  gen mk_untyped_schannel: 1 -> address =
+    "new(*PTF gcp,::flx::rtl::schannel_ptr_map,false) ::flx::rtl::schannel_t(PTF gcp)"
+    requires property "needs_gc"
+  ;
+  //$ Create a bidirectional synchronous channel.
+  gen mk_schannel[t]():schannel[t] =>
+    C_hack::cast[schannel[t]] #mk_untyped_schannel
+  ;
+
+  //$ Model a NULL pointer as an schannel.
+  //$ Necessary for killing off schannels,
+  //$ so as to make them unreachable, so the gc can reap them.
+  //$ Note: null_schannels are safe.
+  gen mk_null_schannel[t]: 1->schannel[t] = "NULL";
+
+  //$ Model a NULL pointer as an ischannel.
+  //$ Necessary for killing off schannels,
+  //$ so as to make them unreachable, so the gc can reap them.
+  gen mk_null_ischannel[t]: 1->ischannel[t] = "NULL";
+
+  //$ Model a NULL pointer as an oschannel.
+  //$ Necessary for killing off schannels,
+  //$ so as to make them unreachable, so the gc can reap them.
+  gen mk_null_oschannel[t]: 1->oschannel[t] = "NULL";
+
+  ctor[T] address: oschannel[T] = "$1";
+  ctor[T] address: ischannel[T] = "$1";
+
+  //$ Check if an schannel is NULL.
+  fun isNULL[T] :schannel[T] -> bool = "NULL==$1";
+
+  //$ Check if an ischannel is NULL.
+  fun isNULL[T] :ischannel[T] -> bool = "NULL==$1";
+
+  //$ Check if an oschannel is NULL.
+  fun isNULL[T] :oschannel[T] -> bool = "NULL==$1";
+
+  //$ Safe cast from bidirectional to ouput synchronous channel.
+  ctor[t] oschannel[t](x:schannel[t]) => C_hack::cast[oschannel[t]] x;
+
+  //$ Safe cast from bidirectional to input synchronous channel.
+  ctor[t] ischannel[t](x:schannel[t]) => C_hack::cast[ischannel[t]] x;
+
+  //$ Make an input and an output channel out of a bidirectional channel.
+  gen mk_ioschannel_pair[t](var ch:schannel[t]) =>
+    ischannel[t] ch, oschannel[t] ch
+  ;
+
+  //$ Construct a connected input and output channel pair.
+  gen mk_ioschannel_pair[t]() =>
+    mk_ioschannel_pair[t]$ mk_schannel[t] ()
+  ;
+
+  // pass in address of location to put the pointer to the T data
+  proc read[T] (chan:schannel[T], loc: &&T) {
+    svc$ svc_sread$ C_hack::cast[_schannel] chan, C_hack::reinterpret[&root::address] (loc);
+  }
+
+  // pass in address of location to put the T data
+  proc read[T] (chan:schannel[T], p: &T) {
+    var loc: &T;
+    read (chan, &loc);
+    p <- *loc;
+  }
+
+  //$ Read an item from a bidirectional channel.
+  inline gen read[T] (chan:schannel[T]) = {
+    var loc: &T;
+    read (chan, &loc);
+    return *loc;
+  }
+  proc read[T] (chan:ischannel[T], loc: &&T) { read (C_hack::cast[schannel[T]] chan, loc); }
+  proc read[T] (chan:ischannel[T], p: &T) { read (C_hack::cast[schannel[T]] chan, p); }
+
+  //$ Read an item from an input channel.
+  inline gen read[T] (chan:ischannel[T]) => read$ C_hack::cast[schannel[T]] chan;
+
+  //$ Test if channel is read for a read.
+  inline gen ready[T] :ischannel[T] -> bool = "$1->waiting_to_write!=NULL";
+  inline gen ready[T] : schannel[T] -> bool = "$1->waiting_to_write!=NULL";
+
+  //$ Return Some value if ready, otherwise None
+  inline gen maybe_read[T] (chan:ischannel[T]) =>
+    if chan.ready then Some chan.read else None[T]
+  ;
+
+  inline gen maybe_read[T] (chan:schannel[T]) =>
+    if chan.ready then Some chan.read else None[T]
+  ;
+
+  //$ Write an item to a bidirectional channel.
+  proc write[T] (chan:schannel[T], v:T) {
+    var ps = C_hack::cast[root::address]$ new v;
+    svc$ svc_swrite$ C_hack::cast[_schannel] chan, &ps;
+  }
+
+  proc write[T] (chan:oschannel[T], v:T) {
+    write (C_hack::cast[schannel[T]] chan, v);
+  }
+
+  //$ Multi Write an item to a bidirectional channel.
+  proc broadcast[T] (chan:schannel[T], v:T) {
+    var ps = C_hack::cast[root::address]$ new v;
+    svc$ svc_multi_swrite$ C_hack::cast[_schannel] chan, &ps;
+  }
+
+  //$ Multi Write an item to an output channel.
+  proc broadcast[T] (chan:oschannel[T], v:T) {
+    broadcast (C_hack::cast[schannel[T]] chan, v);
+  }
+
+  // Very high power though not very efficient conversion
+  // from ischannel to iterator.
+  // Given i: ischannel[T] you can just write
+  // for j in i do .. done
+  gen iterator[T] (i:ischannel[T]) () : opt[T] = {
+  next:>
+    var y = None[T];
+    frun { var x = read i; y = Some x; };
+    match y do
+    | Some _ => yield y; goto next;
+    | None => return y;
+    done
+  }
+
+  // Here is a subroutine call, assuming the
+  // fibre is already created
+  inline gen subcall[r,w] (chout:%>w, chin:%<r) (arg:w):r =
+  {
+    write (chout,arg);
+    return read chin;
+  }
+
+  // Now, we can use the channels AS a function:
+  inline fun apply[r,w] (ch:(%>w * %<r), arg:w):r =>
+    subcall ch arg
+  ;
+
+}
+
+#line 430 "/Users/skaller/felix/src/packages/fibres.fdoc"
+
+open class DuplexSchannels
+{
+_gc_pointer type duplex_schannel[r,w] = "::flx::rtl::schannel_t*";
+
+inline gen read[r,w] (chan:duplex_schannel[r,w]) : r =>
+  read (C_hack::cast[ischannel[r]] chan)
+;
+
+inline proc write[r,w] (chan:duplex_schannel[r,w], v:w)  =>
+  write (C_hack::cast[oschannel[w]] chan, v)
+;
+
+ctor[r,w] duplex_schannel[r,w] () =>
+  C_hack::cast[duplex_schannel[r,w]] #mk_untyped_schannel
+;
+
+// NOTE: assuming the mainline want to read an r
+// after passing a w to the subroutine, it must
+// use the second channel of the pair to do so.
+// passing the first one to the subroutine.
+gen mk_duplex_schannel_pair[r,w] () =>
+  let c = #mk_untyped_schannel in
+  C_hack::cast[duplex_schannel[w,r]] c,
+  C_hack::cast[duplex_schannel[r,w]] c
+;
+
+// Here is our subroutine call, assuming the
+// fibre is already created
+inline gen subcall[r,w] (ch:duplex_schannel[r,w]) (arg:w):r =
+{
+  write (ch,arg);
+  return read ch;
+}
+
+// Now, we can use the duplex channel AS a function:
+inline fun apply[r,w] (ch:duplex_schannel[r,w], arg:w):r =>
+  subcall ch arg
+;
+
+// Here is a self contained subcall that spawns the fibre
+// and creates the channel too. This model is for a one shot.
+inline gen subcall[r,w]
+  (fib: duplex_schannel[w,r] -> 1 -> 0)
+  (arg: w)
+: r =
+{
+  var wr,rw = mk_duplex_schannel_pair[r,w]();
+  spawn_fthread$ fib wr;
+  write (rw,arg);
+  return read rw;
+}
+
+inline gen apply[r,w] (
+  fib: duplex_schannel[w,r] -> 1 -> 0,
+  arg: w)
+: r =>
+  subcall fib arg
+;
+
+} // class DuplexSchannels
+

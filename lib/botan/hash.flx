@@ -1,0 +1,9 @@
+#line 129 "/Users/skaller/felix/src/packages/botan.fdoc"
+library Botan { class Hash {
+  type BufferedComputation = "::Botan::BufferedComputation*";
+  fun output_length : BufferedComputation -> size = "$1->output_length()";
+  proc update : BufferedComputation * +byte * size = "$1->update($2,$3);";
+  proc update : BufferedComputation * byte = "$1->update($2);";
+  proc final: BufferedComputation * +byte = "$1->final($2);";
+
+}}

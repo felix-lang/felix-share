@@ -1,0 +1,46 @@
+#line 108 "/Users/skaller/felix/src/packages/streams.fdoc"
+class Fstream[T,S] {
+  virtual fun uncons: S -> T * S;
+};
+#line 116 "/Users/skaller/felix/src/packages/streams.fdoc"
+instance Fstream [int,int] {
+  fun uncons(x:int) => x, x + 1;
+}
+#line 134 "/Users/skaller/felix/src/packages/streams.fdoc"
+instance Fstream [opt[int], list[int]] {
+  fun uncons: list[int] -> opt[int] * list[int] =
+  | Cons (h,t) => Some h, t
+  | #Empty => None[int], Empty[int]
+  ;
+}
+#line 152 "/Users/skaller/felix/src/packages/streams.fdoc"
+class Stream
+{
+fun make_generator [T,S with Fstream[T,S]]
+  (var state:S)
+=>
+  gen () : T = {
+    var v,s = uncons state;
+    state = s;
+    return v;
+  }
+;
+#line 175 "/Users/skaller/felix/src/packages/streams.fdoc"
+fun make_iterator [T,S with Fstream[opt[T],S]]
+  (var state:S)
+=>
+  make_generator[opt[T],S] state
+;
+#line 192 "/Users/skaller/felix/src/packages/streams.fdoc"
+typedef stream[T,S] = ( state:S, uncons_f: S -> T * S );
+#line 199 "/Users/skaller/felix/src/packages/streams.fdoc"
+instance[T,S] Fstream[T, stream[T,S]] {
+  fun uncons (x:stream[T,S]) : T * stream[T,S] =>
+    let head,tail = x.uncons_f x.state in
+    head, (state=tail, uncons_f = x.uncons_f)
+  ;
+}
+inherit [T,S] Fstream[T,stream[T,S]];
+}
+open Stream;
+

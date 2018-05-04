@@ -1,0 +1,151 @@
+#line 563 "/Users/skaller/felix/src/packages/pthreads.fdoc"
+
+include "std/pthread/ts_bound_queue";
+include "std/pthread/atomic";
+include "std/io/faio";
+include "std/pthread/condition_variable";
+include "std/pthread/pchannels";
+
+class ThreadPool
+{
+  typedef job_t = 1 -> 0;
+  private const ThreadStop : job_t = "NULL";
+  private fun isStop : job_t -> bool = "$1==NULL";
+  private var clock = #Faio::mk_alarm_clock;
+  private var jobqueue = ts_bound_queue_t[job_t] 1024; // queue up to 1K jobs
+  private var nthreads = 8; // great default for quad core i7 ?
+
+  // number of threads actually running
+  private var running = atomic 0;
+
+  // number of threads blocked waiting on a barrier
+  private var waiting = atomic 0;
+
+  // barrier lock
+  private var block = #condition_variable;
+
+  fun get_nthreads () => nthreads;
+
+  // This is a flag used to protect against nested pfor loops.
+  // If there is a nested pfor loop, it will just execute serially
+  // in the calling thread.
+  private var pforrunning = atomic 0;
+
+  proc barrier() {
+//println$ "Barrier";
+    block.lock;
+    ++waiting;
+    if waiting.load == nthreads do
+      waiting.store 0;
+      block.broadcast;
+    else
+    again:>
+      block.wait;
+      if waiting.load != 0 goto again;
+    done
+    block.unlock;
+  }
+
+  proc start () {
+//println$ "Thread pool start()";
+     for i in 1..nthreads call spawn_pthread jobhandler;
+//println$ "Threads spawned";
+  }
+
+  proc start (n:int) {
+     nthreads = n;
+     #start;
+  }
+
+  private proc jobhandler () {
+//println$ "Job handler thread #"+running.str+" started";
+     var id = running;
+     ++running;
+     rpt:while true do
+//println$ "Trying to dequeue a job id=" + id.str;
+       var job = dequeue jobqueue;
+//println$ "Job dequeued id="+id.str;
+       if isStop job break rpt;
+       job;
+       thread_yield();
+     done
+     --running;
+  }
+
+  proc queue_job (job:job_t) {
+//println$ "Queuing job";
+    if running.load == 0 call start ();
+    if nthreads > 0 do
+      call enqueue jobqueue job;
+    else
+      call job;
+    done
+  }
+
+  proc stop () {
+    for i in 1..nthreads
+      call enqueue jobqueue ThreadStop;
+    while running.load != 0
+      call Faio::sleep(clock,0.001);
+  }
+
+  proc post_barrier() {
+    if nthreads > 0
+      for i in 1..nthreads call queue_job barrier;
+  }
+
+  proc notify (chan:opchannel[int]) () {
+    write (chan,1);
+  }
+
+  proc join () {
+    if nthreads > 0 do
+      post_barrier;
+      var ip,op = #mk_iopchannel_pair[int];
+      queue_job$ notify op;
+      var x = read ip;
+      C_hack::ignore(x);
+    done
+  }
+
+  proc pfor_segment (first:int, last:int) (lbody: int * int -> 1 -> 0)
+  {
+//println$ "Pfor segment " + first.str + "," last.str;
+    var N = last - first + 1;
+    var nt = nthreads + 1;
+    if pforrunning.load == 0 and N >= nthreads and nthreads > 0 do
+      pforrunning.store 1;
+      for var counter in 0 upto nt - 2 do
+        var sfirst = first + (N * counter) / nt;
+        var slast = first + (N * (counter + 1)) / nt - 1;
+//  println$ "QUEUE JOB: Counter = " + counter.str + ", sfirst=" + sfirst.str + ", slast=" + slast.str;
+        ThreadPool::queue_job$ lbody (sfirst, slast);
+      done
+      sfirst = first + (N * (nt - 1)) / nt;
+      slast = last;
+//  println$ "UNQUEUED JOB: Counter = " + counter.str + ", sfirst=" + sfirst.str + ", slast=" + slast.str;
+      lbody (sfirst, slast) ();
+      join;
+      pforrunning.store 0;
+    else
+      // Run serially
+      lbody (first, last) ();
+    done
+  }
+
+  inline proc forloop (lbody: int -> 0) (first:int, last:int) ()
+  {
+//println$ "forloop " + first.str + "," + last.str;
+    for var i in first upto last call lbody i;
+  }
+  inline proc pforloop (first: int) (last:int) (lbody: int -> 0)
+  {
+    pfor_segment (first, last)  (forloop lbody);
+  }
+  inline proc tpfor (first:int, last:int, lbody: int-> 0)
+  {
+     pforloop first last lbody;
+  }
+
+}
+

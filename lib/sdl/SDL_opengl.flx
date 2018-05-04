@@ -1,0 +1,13 @@
+#line 2552 "/Users/skaller/felix/src/packages/sdl.fdoc"
+
+header '#include "SDL_opengl.h"';
+
+include "GL/gl_lib";
+include "GL/glu_lib";
+
+open module SDL_opengl_h
+{
+  inherit GL_gl_h;
+  inherit GL_glu_h;
+}
+
